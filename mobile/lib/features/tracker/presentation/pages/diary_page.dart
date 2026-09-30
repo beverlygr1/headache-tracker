@@ -27,7 +27,7 @@ class _DiaryPageState extends State<DiaryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final anchorDate = DateTime(2026, 9, 29);
+    final anchorDate = DateTime.now();
     final records = widget.controller.records.where((record) {
       return switch (_filter) {
         _DiaryFilter.all => true,
@@ -40,6 +40,7 @@ class _DiaryPageState extends State<DiaryPage> {
       bottom: false,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
           Row(
             children: [
@@ -78,7 +79,10 @@ class _DiaryPageState extends State<DiaryPage> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                const _CalendarWeek(),
+                _CalendarWeek(
+                  today: anchorDate,
+                  records: widget.controller.records,
+                ),
               ],
             ),
           ),
@@ -208,23 +212,28 @@ class _DiaryPageState extends State<DiaryPage> {
 }
 
 class _CalendarWeek extends StatelessWidget {
-  const _CalendarWeek();
+  const _CalendarWeek({
+    required this.today,
+    required this.records,
+  });
 
-  static const _days = <({String weekday, int day})>[
-    (weekday: 'ПН', day: 28),
-    (weekday: 'ВТ', day: 29),
-    (weekday: 'СР', day: 30),
-    (weekday: 'ЧТ', day: 1),
-    (weekday: 'ПТ', day: 2),
-    (weekday: 'СБ', day: 3),
-    (weekday: 'ВС', day: 4),
-  ];
+  final DateTime today;
+  final List<AttackRecord> records;
+
+  static const _weekdays = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
 
   @override
   Widget build(BuildContext context) {
+    final monday =
+        DateTime(today.year, today.month, today.day - today.weekday + 1);
     return Row(
-      children: _days.map((item) {
-        final selected = item.day == 29;
+      children: List.generate(7, (index) {
+        final date = DateTime(monday.year, monday.month, monday.day + index);
+        final item = (weekday: _weekdays[index], day: date.day);
+        final selected = RussianDate.isSameDay(date, today);
+        final hasAttack = records.any(
+          (record) => RussianDate.isSameDay(record.startTime, date),
+        );
         return Expanded(
           child: Column(
             children: [
@@ -254,10 +263,19 @@ class _CalendarWeek extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 4),
+              Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: hasAttack ? AppColors.blue : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+              ),
             ],
           ),
         );
-      }).toList(),
+      }),
     );
   }
 }

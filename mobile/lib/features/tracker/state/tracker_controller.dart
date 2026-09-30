@@ -1,35 +1,56 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/api/api_exception.dart';
+import '../data/attack_repository.dart';
 import '../domain/attack_record.dart';
 
+enum TrackerStatus { initial, loading, ready, failure }
+
 class TrackerController extends ChangeNotifier {
-  TrackerController({required List<AttackRecord> records})
-      : _records = List.of(records);
+  TrackerController({required AttackRepository repository})
+      : _repository = repository;
 
   factory TrackerController.demo() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     return TrackerController(
-      records: [
+      repository: InMemoryAttackRepository([
         AttackRecord(
           id: 1,
-          startTime: DateTime(2026, 9, 29, 9, 30),
+          startTime: today.add(const Duration(hours: 9, minutes: 30)),
           intensity: 6,
           painLocation: 'Виски',
           symptoms: const ['Светочувствительность'],
         ),
         AttackRecord(
           id: 2,
-          startTime: DateTime(2026, 9, 27, 18, 20),
-          endTime: DateTime(2026, 9, 27, 19, 5),
+          startTime:
+              today.subtract(const Duration(days: 2, hours: 5, minutes: 40)),
+          endTime:
+              today.subtract(const Duration(days: 2, hours: 4, minutes: 55)),
           intensity: 4,
           painLocation: 'Лоб',
           symptoms: const [],
         ),
-      ],
+      ]),
     );
   }
 
-  final List<AttackRecord> _records;
-  int _nextId = 3;
+  final AttackRepository _repository;
+  final List<AttackRecord> _records = [];
+
+  TrackerStatus _status = TrackerStatus.initial;
+  String? _errorMessage;
+  bool _isSaving = false;
+  bool _disposed = false;
+
+  TrackerStatus get status => _status;
+
+  /// Ошибка первой загрузки, когда показать пока нечего.
+  String? get errorMessage => _errorMessage;
+
+  /// Идёт создание, изменение или завершение приступа.
+  bool get isSaving => _isSaving;
 
   List<AttackRecord> get records {
     final result = List<AttackRecord>.of(_records)
@@ -55,49 +76,103 @@ class TrackerController extends ChangeNotifier {
     return null;
   }
 
-  void saveAttack({
+  /// Загружает приступы. При повторной загрузке (pull-to-refresh) уже
+  /// показанные данные остаются на экране, а ошибка пробрасывается вызывающему.
+  Future<void> load() async {
+    final hasData = _status == TrackerStatus.ready;
+    if (!hasData) {
+      _status = TrackerStatus.loading;
+      _errorMessage = null;
+      _notify();
+    }
+
+    try {
+      final records = await _repository.fetchAll();
+      _records
+        ..clear()
+        ..addAll(records);
+      _status = TrackerStatus.ready;
+      _errorMessage = null;
+    } catch (error) {
+      if (hasData) rethrow;
+      _status = TrackerStatus.failure;
+      _errorMessage = describeError(error);
+    } finally {
+      _notify();
+    }
+  }
+
+  Future<void> saveAttack({
     int? id,
     required DateTime startTime,
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
   }) {
-    if (id != null) {
-      final index = _records.indexWhere((record) => record.id == id);
-      if (index != -1) {
-        _records[index] = _records[index].copyWith(
+    return _save(() {
+      if (id != null && byId(id) != null) {
+        return _repository.update(
+          id,
           startTime: startTime,
           intensity: intensity,
           painLocation: painLocation,
           symptoms: symptoms,
         );
-        notifyListeners();
-        return;
       }
-    }
-
-    _records.add(
-      AttackRecord(
-        id: _nextId++,
+      return _repository.create(
         startTime: startTime,
         intensity: intensity,
         painLocation: painLocation,
-        symptoms: List.unmodifiable(symptoms),
-      ),
-    );
-    notifyListeners();
+        symptoms: symptoms,
+      );
+    });
   }
 
-  void finishAttack(int id) {
-    final index = _records.indexWhere((record) => record.id == id);
-    if (index == -1 || !_records[index].isActive) return;
+  Future<void> finishAttack(int id) async {
+    final record = byId(id);
+    if (record == null || !record.isActive) return;
 
-    final record = _records[index];
     final now = DateTime.now();
     final endTime = now.isAfter(record.startTime)
         ? now
         : record.startTime.add(const Duration(minutes: 45));
-    _records[index] = record.copyWith(endTime: endTime);
-    notifyListeners();
+    await _save(() => _repository.finish(id, endTime));
   }
+
+  Future<void> _save(Future<AttackRecord> Function() request) async {
+    if (_isSaving) return;
+    _isSaving = true;
+    _notify();
+    try {
+      _upsert(await request());
+    } finally {
+      _isSaving = false;
+      _notify();
+    }
+  }
+
+  void _upsert(AttackRecord record) {
+    final index = _records.indexWhere((item) => item.id == record.id);
+    if (index == -1) {
+      _records.add(record);
+    } else {
+      _records[index] = record;
+    }
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+/// Текст ошибки для показа пользователю.
+String describeError(Object error) {
+  if (error is ApiException) return error.message;
+  return 'Что-то пошло не так. Попробуйте ещё раз';
 }

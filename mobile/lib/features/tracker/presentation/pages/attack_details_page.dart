@@ -76,7 +76,8 @@ class AttackDetailsPage extends StatelessWidget {
                       const SizedBox(height: 14),
                       Text(
                         record.isActive
-                            ? 'Начался сегодня в ${RussianDate.time(record.startTime)}'
+                            ? 'Начался ${RussianDate.isSameDay(record.startTime, DateTime.now()) ? 'сегодня' : RussianDate.dayMonth(record.startTime)} '
+                                'в ${RussianDate.time(record.startTime)}'
                             : 'Завершён в ${RussianDate.time(record.endTime!)} · '
                                 '${record.durationMinutes ?? 0} минут',
                         style: const TextStyle(
@@ -144,11 +145,13 @@ class AttackDetailsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 PrimaryActionButton(
-                  label: record.isActive
-                      ? 'Приступ закончился'
-                      : 'Приступ завершён',
-                  onPressed: record.isActive
-                      ? () => controller.finishAttack(record.id)
+                  label: controller.isSaving
+                      ? 'Сохранение…'
+                      : record.isActive
+                          ? 'Приступ закончился'
+                          : 'Приступ завершён',
+                  onPressed: record.isActive && !controller.isSaving
+                      ? () => _finish(context, record)
                       : null,
                 ),
                 const SizedBox(height: 10),
@@ -162,6 +165,14 @@ class AttackDetailsPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _finish(BuildContext context, AttackRecord record) async {
+    try {
+      await controller.finishAttack(record.id);
+    } catch (error) {
+      if (context.mounted) showErrorSnackBar(context, describeError(error));
+    }
   }
 
   Future<void> _openEditor(BuildContext context, AttackRecord record) async {

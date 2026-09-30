@@ -60,3 +60,37 @@ def test_attack_end_time_timezones(client):
 
     summary = client.get("/api/v1/analytics/summary?period=year", headers=headers)
     assert summary.json()["avg_duration_minutes"] == 60.0
+
+
+def test_attack_symptoms_and_start_time_update(client):
+    client.post("/api/v1/auth/register", json={"email": "ui@example.com", "password": "password123", "name": "Ui"})
+    tokens = client.post("/api/v1/auth/login", json={"email": "ui@example.com", "password": "password123"}).json()
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+    created = client.post("/api/v1/attacks", headers=headers, json={"start_time": "2026-09-23T12:00:00Z", "intensity": 6, "localization": "Виски", "symptoms": ["Тошнота"]})
+    assert created.status_code == 201
+    assert created.json()["symptoms"] == ["Тошнота"]
+    attack_id = created.json()["id"]
+
+    moved = client.put(f"/api/v1/attacks/{attack_id}", headers=headers, json={"start_time": "2026-09-23T10:00:00Z", "localization": "Лоб"})
+    assert moved.status_code == 200
+    assert moved.json()["start_time"].startswith("2026-09-23T10:00:00")
+    assert moved.json()["localization"] == "Лоб"
+
+    finished = client.put(f"/api/v1/attacks/{attack_id}", headers=headers, json={"end_time": "2026-09-23T11:00:00Z"})
+    assert finished.status_code == 200
+
+    start_after_end = client.put(f"/api/v1/attacks/{attack_id}", headers=headers, json={"start_time": "2026-09-23T11:30:00Z"})
+    assert start_after_end.status_code == 422
+
+    empty_start = client.put(f"/api/v1/attacks/{attack_id}", headers=headers, json={"start_time": None})
+    assert empty_start.status_code == 422
+
+
+def test_cors_allows_flutter_web_dev_port(client):
+    response = client.options(
+        "/api/v1/attacks",
+        headers={"Origin": "http://localhost:53124", "Access-Control-Request-Method": "GET"},
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:53124"

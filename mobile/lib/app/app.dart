@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../features/tracker/presentation/app_shell.dart';
-import '../features/tracker/state/tracker_controller.dart';
 import 'theme.dart';
 
 class HeadacheTrackerApp extends StatelessWidget {
   const HeadacheTrackerApp({
-    required this.controller,
+    required this.home,
     super.key,
   });
 
-  final TrackerController controller;
+  final Widget home;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +36,7 @@ class HeadacheTrackerApp extends StatelessWidget {
           },
         );
       },
-      home: AppShell(controller: controller),
+      home: home,
     );
   }
 }

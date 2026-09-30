@@ -299,3 +299,58 @@ class BackTitleBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 }
+
+/// Экран ошибки загрузки с кнопкой повтора.
+class ErrorRetryView extends StatelessWidget {
+  const ErrorRetryView({
+    required this.message,
+    required this.onRetry,
+    super.key,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              color: AppColors.muted,
+              size: 42,
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Не удалось загрузить данные',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 22),
+            PrimaryActionButton(
+              label: 'Повторить',
+              icon: Icons.refresh_rounded,
+              onPressed: onRetry,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+void showErrorSnackBar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}

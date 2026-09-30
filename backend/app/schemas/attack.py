@@ -11,6 +11,8 @@ class AttackCreateRequest(BaseModel):
     pain_type: str | None = Field(None, max_length=80)
     localization: str | None = Field(None, max_length=120)
     medications: list[str] | None = None
+    symptoms: list[str] | None = None
+    relief_factors: list[str] | None = None
 
     @field_validator("start_time")
     @classmethod
@@ -19,6 +21,7 @@ class AttackCreateRequest(BaseModel):
 
 
 class AttackUpdateRequest(BaseModel):
+    start_time: datetime | None = None
     end_time: datetime | None = None
     intensity: int | None = Field(None, ge=1, le=10)
     pain_type: str | None = Field(None, max_length=80)
@@ -27,9 +30,9 @@ class AttackUpdateRequest(BaseModel):
     symptoms: list[str] | None = None
     relief_factors: list[str] | None = None
 
-    @field_validator("end_time")
+    @field_validator("start_time", "end_time")
     @classmethod
-    def normalize_end_time(cls, value: datetime | None) -> datetime | None:
+    def normalize_times(cls, value: datetime | None) -> datetime | None:
         return ensure_utc(value) if value is not None else None
 
 

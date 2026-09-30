@@ -33,7 +33,9 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   void initState() {
     super.initState();
     final record = widget.initialRecord;
-    _startTime = record?.startTime ?? DateTime(2026, 9, 29, 9, 30);
+    final now = DateTime.now();
+    _startTime = record?.startTime ??
+        DateTime(now.year, now.month, now.day, now.hour, now.minute);
     _intensity = record?.intensity ?? 6;
     _painLocation = record?.painLocation ?? 'Виски';
     _symptoms = Set.of(record?.symptoms ?? const ['Свет мешает']);
@@ -50,6 +52,7 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final saving = widget.controller.isSaving;
     return Scaffold(
       appBar: const BackTitleBar(title: 'Запись приступа'),
       body: SafeArea(
@@ -89,7 +92,11 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Сегодня, ${RussianDate.time(_startTime)}',
+                                RussianDate.isSameDay(
+                                        _startTime, DateTime.now())
+                                    ? 'Сегодня, ${RussianDate.time(_startTime)}'
+                                    : '${RussianDate.dayMonth(_startTime)}, '
+                                        '${RussianDate.time(_startTime)}',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -247,8 +254,8 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
               child: PrimaryActionButton(
-                label: 'Сохранить приступ',
-                onPressed: _save,
+                label: saving ? 'Сохранение…' : 'Сохранить приступ',
+                onPressed: saving ? null : _save,
               ),
             ),
           ],
@@ -316,15 +323,24 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     });
   }
 
-  void _save() {
-    widget.controller.saveAttack(
+  Future<void> _save() async {
+    // Перерисовать кнопку в состоянии «Сохранение…».
+    final save = widget.controller.saveAttack(
       id: widget.initialRecord?.id,
       startTime: _startTime,
       intensity: _intensity,
       painLocation: _painLocation,
       symptoms: _symptoms.toList(),
     );
-    Navigator.of(context).pop(true);
+    setState(() {});
+    try {
+      await save;
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {});
+      showErrorSnackBar(context, describeError(error));
+    }
   }
 }
 

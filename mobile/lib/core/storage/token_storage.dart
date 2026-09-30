@@ -21,10 +21,10 @@ class TokenStorage {
     required String accessToken,
     required String refreshToken,
   }) async {
-    await Future.wait([
-      _storage.write(key: _accessTokenKey, value: accessToken),
-      _storage.write(key: _refreshTokenKey, value: refreshToken),
-    ]);
+    // Последовательно: в вебе первая запись создаёт ключ шифрования,
+    // и параллельные записи зашифровали бы токены разными ключами.
+    await _storage.write(key: _accessTokenKey, value: accessToken);
+    await _storage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
   Future<void> clear() {

@@ -11,16 +11,21 @@ class TodayPage extends StatelessWidget {
     required this.controller,
     required this.onCreateAttack,
     required this.onOpenAttack,
+    required this.onProfileTap,
+    this.userName,
     super.key,
   });
 
   final TrackerController controller;
+  final String? userName;
+  final VoidCallback onProfileTap;
   final VoidCallback onCreateAttack;
   final ValueChanged<AttackRecord> onOpenAttack;
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime(2026, 9, 29);
+    final today = DateTime.now();
+    final name = userName?.trim() ?? '';
     final latest = controller.latestAttack;
 
     return Stack(
@@ -49,6 +54,7 @@ class TodayPage extends StatelessWidget {
           bottom: false,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+            physics: const AlwaysScrollableScrollPhysics(),
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,20 +81,30 @@ class TodayPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Container(
-                    width: 62,
-                    height: 62,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Text(
-                      'А',
-                      style: TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                  Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      onTap: onProfileTap,
+                      customBorder: const CircleBorder(),
+                      child: SizedBox(
+                        width: 62,
+                        height: 62,
+                        child: Center(
+                          child: name.isEmpty
+                              ? const Icon(
+                                  Icons.person_outline_rounded,
+                                  color: AppColors.ink,
+                                )
+                              : Text(
+                                  name.characters.first.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.ink,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                   ),

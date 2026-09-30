@@ -33,7 +33,11 @@ def update_attack(attack_id: int, data: AttackUpdateRequest, db: DbSession, curr
     if attack is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Приступ не найден")
     values = data.model_dump(exclude_unset=True)
-    if "end_time" in values and values["end_time"] is not None and values["end_time"] < attack.start_time:
+    start_time = values.get("start_time", attack.start_time)
+    if start_time is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="start_time не может быть пустым")
+    end_time = values.get("end_time", attack.end_time)
+    if end_time is not None and end_time < start_time:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="end_time не может быть раньше start_time")
     return AttackResponse.model_validate(attack_repo.update_attack(db, attack, values))
 
