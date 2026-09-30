@@ -31,7 +31,7 @@ backend/                  FastAPI backend
     services/             auth и analytics logic
   migrations/             Alembic
   tests/                  API integration test
-mobile/                   Flutter API-каркас
+mobile/                   Flutter-клиент (UI + API-слой), см. mobile/README.md
 postman/                  готовая Postman collection
 original_api_draft/       исходные main.py и schemas.py
 

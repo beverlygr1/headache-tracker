@@ -1,7 +1,7 @@
 name: headache_tracker_app
-description: Mobile client for GPO AOI-2508
+description: Flutter UI prototype for the Headache Tracker backend
 publish_to: "none"
-version: 0.1.0+1
+version: 0.2.0+1
 
 environment:
   sdk: ">=3.5.0 <4.0.0"

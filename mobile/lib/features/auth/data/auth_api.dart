@@ -1,6 +1,5 @@
 import '../../../core/api/api_client.dart';
 
-
 class AuthApi {
   AuthApi(this._client);
 

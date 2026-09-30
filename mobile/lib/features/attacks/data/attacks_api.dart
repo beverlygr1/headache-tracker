@@ -1,6 +1,5 @@
 import '../../../core/api/api_client.dart';
 
-
 class AttacksApi {
   AttacksApi(this._client);
 
@@ -63,8 +62,7 @@ class AttacksApi {
       },
     );
 
-    return (response.data ?? const <dynamic>[])
-        .cast<Map<String, dynamic>>();
+    return (response.data ?? const <dynamic>[]).cast<Map<String, dynamic>>();
   }
 
   Future<Map<String, dynamic>> getById(int id) async {

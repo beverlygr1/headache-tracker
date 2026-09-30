@@ -4,7 +4,6 @@ import '../config/app_config.dart';
 import '../storage/token_storage.dart';
 import 'api_exception.dart';
 
-
 class ApiClient {
   ApiClient({
     Dio? dio,
@@ -23,21 +22,21 @@ class ApiClient {
               ),
             ) {
     this.dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final token = await this.tokenStorage.getAccessToken();
+          InterceptorsWrapper(
+            onRequest: (options, handler) async {
+              final token = await this.tokenStorage.getAccessToken();
 
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
+              if (token != null && token.isNotEmpty) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
 
-          handler.next(options);
-        },
-        onError: (error, handler) {
-          handler.reject(error);
-        },
-      ),
-    );
+              handler.next(options);
+            },
+            onError: (error, handler) {
+              handler.reject(error);
+            },
+          ),
+        );
   }
 
   final Dio dio;

@@ -1,6 +1,5 @@
 import '../../../core/api/api_client.dart';
 
-
 class ProfileApi {
   ProfileApi(this._client);
 

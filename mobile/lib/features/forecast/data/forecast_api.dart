@@ -1,6 +1,5 @@
 import '../../../core/api/api_client.dart';
 
-
 class ForecastApi {
   ForecastApi(this._client);
 
