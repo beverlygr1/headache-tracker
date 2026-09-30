@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
     cors_origins: list[str] = ["http://localhost", "http://127.0.0.1"]
+    # Flutter web (`flutter run -d chrome`) поднимается на случайном порту localhost.
+    cors_origin_regex: str | None = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
 
 
 @lru_cache

@@ -1,17 +1,18 @@
 import '../../../core/api/api_client.dart';
-
+import 'user_profile.dart';
 
 class ProfileApi {
   ProfileApi(this._client);
 
   final ApiClient _client;
 
-  Future<Map<String, dynamic>> getProfile() async {
+  Future<UserProfile> getProfile() async {
     final response = await _client.get<Map<String, dynamic>>('/user/profile');
-    return response.data ?? <String, dynamic>{};
+    return UserProfile.fromJson(_requireBody(response.data));
   }
 
-  Future<Map<String, dynamic>> updateProfile({
+  Future<UserProfile> updateProfile({
+    String? name,
     String? timeZone,
     String? gender,
     DateTime? birthDate,
@@ -19,13 +20,21 @@ class ProfileApi {
     final response = await _client.put<Map<String, dynamic>>(
       '/user/profile',
       data: {
+        if (name != null) 'name': name,
         if (timeZone != null) 'time_zone': timeZone,
         if (gender != null) 'gender': gender,
         if (birthDate != null) 'birth_date': _dateOnly(birthDate),
       },
     );
 
-    return response.data ?? <String, dynamic>{};
+    return UserProfile.fromJson(_requireBody(response.data));
+  }
+
+  Map<String, dynamic> _requireBody(Map<String, dynamic>? data) {
+    if (data == null) {
+      throw StateError('Пустой ответ от /user/profile');
+    }
+    return data;
   }
 
   String _dateOnly(DateTime value) {

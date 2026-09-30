@@ -1,0 +1,10 @@
+{
+  "name": "Дневник головной боли",
+  "short_name": "Дневник боли",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F6F8FD",
+  "theme_color": "#F6F8FD",
+  "description": "Прототип мобильного дневника головной боли",
+  "orientation": "portrait-primary"
+}

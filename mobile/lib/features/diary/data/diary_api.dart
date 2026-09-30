@@ -1,6 +1,5 @@
 import '../../../core/api/api_client.dart';
 
-
 class DiaryApi {
   DiaryApi(this._client);
 
@@ -52,8 +51,7 @@ class DiaryApi {
       },
     );
 
-    return (response.data ?? const <dynamic>[])
-        .cast<Map<String, dynamic>>();
+    return (response.data ?? const <dynamic>[]).cast<Map<String, dynamic>>();
   }
 
   String _dateOnly(DateTime value) {
