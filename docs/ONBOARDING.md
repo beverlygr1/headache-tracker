@@ -118,10 +118,12 @@ pytest -q
 
 ZIP содержит исходники текущей ветки. Для сохранения полной истории и всех
 веток рядом передаётся файл `headache-tracker-all-branches.bundle`.
+Выполните команды из папки с этим файлом. Для клонирования используется другая
+папка, чтобы не конфликтовать с уже распакованными исходниками.
 
 ```bash
-git clone -b feature/post-auth-onboarding headache-tracker-all-branches.bundle headache-tracker
-cd headache-tracker
+git clone -b feature/post-auth-onboarding headache-tracker-all-branches.bundle headache-tracker-git
+cd headache-tracker-git
 git remote set-url origin https://github.com/beverlygr1/headache-tracker.git
 git push -u origin feature/post-auth-onboarding
 ```
