@@ -128,6 +128,7 @@ git remote set-url origin https://github.com/beverlygr1/headache-tracker.git
 git push -u origin feature/post-auth-onboarding
 ```
 
-После проверки создайте Pull Request из новой ветки в `dev` — она является
-актуальной базой работы. Не заменяйте `dev` или `main` архивом целиком.
+После проверки создайте Pull Request из новой ветки. Основа реализации — `dev`;
+целевую ветку согласуйте с командой: существующий `GIT_WORKFLOW.md` описывает
+Pull Request в `main`. Не заменяйте `dev` или `main` архивом целиком.
 Внутри рабочей локальной копии изменения уже находятся в отдельной ветке.
