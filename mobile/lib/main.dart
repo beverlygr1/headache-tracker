@@ -7,6 +7,8 @@ import 'core/config/app_config.dart';
 import 'features/attacks/data/attacks_api.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/state/auth_controller.dart';
+import 'features/diary/data/diary_api.dart';
+import 'features/onboarding/presentation/onboarding_demo.dart';
 import 'features/profile/data/profile_api.dart';
 import 'features/tracker/presentation/app_shell.dart';
 import 'features/tracker/state/tracker_controller.dart';
@@ -17,6 +19,7 @@ void main() {
 }
 
 Widget _buildHome() {
+  if (AppConfig.onboardingDemo) return const OnboardingDemo();
   if (AppConfig.demoMode) {
     return AppShell(controller: TrackerController.demo());
   }
@@ -31,5 +34,6 @@ Widget _buildHome() {
   return AuthGate(
     authController: authController,
     attacksApi: AttacksApi(client),
+    diaryApi: DiaryApi(client),
   );
 }

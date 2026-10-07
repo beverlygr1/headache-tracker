@@ -7,4 +7,5 @@ class AppConfig {
   /// `--dart-define=DEMO_MODE=true` запускает UI на локальных демо-данных
   /// без backend и авторизации.
   static const bool demoMode = bool.fromEnvironment('DEMO_MODE');
+  static const bool onboardingDemo = bool.fromEnvironment('ONBOARDING_DEMO');
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/utils/russian_date.dart';
+import '../../../diary/data/daily_entry.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
@@ -12,6 +13,10 @@ class TodayPage extends StatelessWidget {
     required this.onCreateAttack,
     required this.onOpenAttack,
     required this.onProfileTap,
+    required this.onOpenDailyEntry,
+    this.dailyEntries = const [],
+    this.diaryError,
+    this.onRetryDiary,
     this.userName,
     super.key,
   });
@@ -21,12 +26,20 @@ class TodayPage extends StatelessWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onCreateAttack;
   final ValueChanged<AttackRecord> onOpenAttack;
+  final VoidCallback onOpenDailyEntry;
+  final List<DailyEntry> dailyEntries;
+  final String? diaryError;
+  final VoidCallback? onRetryDiary;
 
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
     final name = userName?.trim() ?? '';
     final latest = controller.latestAttack;
+    DailyEntry? todayEntry;
+    for (final entry in dailyEntries) {
+      if (RussianDate.isSameDay(entry.date, today)) todayEntry = entry;
+    }
 
     return Stack(
       children: [
@@ -136,38 +149,22 @@ class TodayPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 15),
                     Text(
-                      'Узнаём ваш ритм',
+                      latest == null && dailyEntries.isEmpty
+                          ? 'Начнём с наблюдений'
+                          : 'Ваш дневник пополняется',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 7),
                     const Text(
-                      'Продолжайте вести дневник.\nДля прогноза пока мало данных.',
+                      'Записывайте приступы и самочувствие. Личный прогноз появится на следующем этапе.',
                       style: TextStyle(
                         color: AppColors.muted,
                         height: 1.45,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: List.generate(10, (index) {
-                        final complete = index < 6;
-                        return Expanded(
-                          child: Container(
-                            height: 7,
-                            margin: EdgeInsets.only(right: index == 9 ? 0 : 6),
-                            decoration: BoxDecoration(
-                              color: complete
-                                  ? AppColors.teal
-                                  : const Color(0xFFEFF2F7),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 10),
                     const Text(
-                      '7 дней наблюдений',
+                      'Сейчас доступны дневник и история',
                       style: TextStyle(
                         color: AppColors.muted,
                         fontSize: 10,
@@ -188,36 +185,33 @@ class TodayPage extends StatelessWidget {
               const SizedBox(height: 14),
               AppCard(
                 color: AppColors.blueSoft,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Форма дневника дня будет добавлена позже'),
-                    ),
-                  );
-                },
-                child: const Row(
+                onTap: onOpenDailyEntry,
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.article_outlined,
                       color: AppColors.blue,
                       size: 22,
                     ),
-                    SizedBox(width: 14),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Как прошёл ваш день?',
-                            style: TextStyle(
+                            todayEntry == null
+                                ? 'Как прошёл ваш день?'
+                                : 'Самочувствие сегодня',
+                            style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            'Сон, вода и стресс · около минуты',
-                            style: TextStyle(
+                            todayEntry?.summary ??
+                                'Сон, вода и стресс · около минуты',
+                            style: const TextStyle(
                               color: AppColors.muted,
                               fontSize: 11,
                             ),
@@ -225,7 +219,7 @@ class TodayPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Icon(
+                    const Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.muted,
                     ),
@@ -233,6 +227,36 @@ class TodayPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
+              if (diaryError != null) ...[
+                AppCard(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      const Text('Не удалось загрузить дневник самочувствия'),
+                      const SizedBox(height: 8),
+                      Text(diaryError!,
+                          style: const TextStyle(color: AppColors.muted)),
+                      TextButton(
+                          onPressed: onRetryDiary,
+                          child: const Text('Повторить')),
+                    ])),
+                const SizedBox(height: 14),
+              ],
+              if (latest == null)
+                AppCard(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(
+                          dailyEntries.isEmpty
+                              ? 'Здесь появится ваша первая запись'
+                              : 'Приступов пока нет',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      const Text(
+                          'Если боли нет, начните с самочувствия. Приступ можно записать, когда он возникнет.',
+                          style: TextStyle(color: AppColors.muted)),
+                    ])),
               if (latest != null)
                 AppCard(
                   onTap: () => onOpenAttack(latest),

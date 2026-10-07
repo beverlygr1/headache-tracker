@@ -12,6 +12,8 @@ class UserProfileResponse(BaseModel):
     time_zone: str | None = None
     gender: str | None = None
     birth_date: date | None = None
+    onboarding_step: int = 0
+    onboarding_completed: bool = False
 
 
 class UserProfileUpdateRequest(BaseModel):
@@ -19,3 +21,10 @@ class UserProfileUpdateRequest(BaseModel):
     time_zone: str | None = Field(None, max_length=64)
     gender: str | None = Field(None, max_length=32)
     birth_date: date | None = None
+
+
+class OnboardingUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    step: int = Field(ge=0, le=1, strict=True)
+    completed: bool = Field(default=False, strict=True)

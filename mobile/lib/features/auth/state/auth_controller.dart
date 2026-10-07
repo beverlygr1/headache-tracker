@@ -33,6 +33,24 @@ class AuthController extends ChangeNotifier {
   /// Идёт вход или регистрация.
   bool get isBusy => _isBusy;
 
+  Future<void> saveOnboardingProgress({
+    required int step,
+    bool completed = false,
+  }) async {
+    final userId = _profile?.id;
+    if (_status != AuthStatus.authenticated || userId == null) {
+      throw StateError('Нет активного аккаунта');
+    }
+    final profile = await _profileApi.updateOnboarding(
+      step: step,
+      completed: completed,
+    );
+    // An expired session must not be resurrected by a late response.
+    if (_status != AuthStatus.authenticated || _profile?.id != userId) return;
+    _profile = profile;
+    notifyListeners();
+  }
+
   /// Проверяет сохранённые токены при запуске приложения.
   Future<void> restoreSession() async {
     try {

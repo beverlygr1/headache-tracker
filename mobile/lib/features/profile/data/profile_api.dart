@@ -6,6 +6,17 @@ class ProfileApi {
 
   final ApiClient _client;
 
+  Future<UserProfile> updateOnboarding({
+    required int step,
+    bool completed = false,
+  }) async {
+    final response = await _client.put<Map<String, dynamic>>(
+      '/user/onboarding',
+      data: {'step': step, 'completed': completed},
+    );
+    return UserProfile.fromJson(_requireBody(response.data));
+  }
+
   Future<UserProfile> getProfile() async {
     final response = await _client.get<Map<String, dynamic>>('/user/profile');
     return UserProfile.fromJson(_requireBody(response.data));

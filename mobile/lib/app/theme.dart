@@ -23,6 +23,7 @@ ThemeData buildAppTheme() {
 
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'Onest',
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.background,
     dividerColor: AppColors.line,
@@ -75,6 +76,7 @@ ThemeData buildAppTheme() {
       elevation: 0,
       centerTitle: false,
       titleTextStyle: TextStyle(
+        fontFamily: 'Onest',
         color: AppColors.ink,
         fontSize: 20,
         fontWeight: FontWeight.w800,

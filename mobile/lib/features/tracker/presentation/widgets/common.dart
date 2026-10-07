@@ -65,21 +65,23 @@ class PrimaryActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: icon == null
-          ? FilledButton(
-              onPressed: onPressed,
-              style: _style(),
-              child: Text(label),
-            )
-          : FilledButton.icon(
-              onPressed: onPressed,
-              style: _style(),
-              icon: Icon(icon, size: 18),
-              label: Text(label),
-            ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 54),
+      child: SizedBox(
+        width: double.infinity,
+        child: icon == null
+            ? FilledButton(
+                onPressed: onPressed,
+                style: _style(),
+                child: Text(label, textAlign: TextAlign.center),
+              )
+            : FilledButton.icon(
+                onPressed: onPressed,
+                style: _style(),
+                icon: Icon(icon, size: 18),
+                label: Text(label, textAlign: TextAlign.center),
+              ),
+      ),
     );
   }
 
@@ -90,8 +92,10 @@ class PrimaryActionButton extends StatelessWidget {
       disabledBackgroundColor: AppColors.line,
       disabledForegroundColor: AppColors.muted,
       elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       shape: const StadiumBorder(),
       textStyle: const TextStyle(
+        fontFamily: 'Onest',
         fontSize: 14,
         fontWeight: FontWeight.w700,
       ),
@@ -120,7 +124,10 @@ class SecondaryActionButton extends StatelessWidget {
           foregroundColor: AppColors.ink,
           backgroundColor: const Color(0xFFF0F3F8),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(
+            fontFamily: 'Onest',
+            fontWeight: FontWeight.w700,
+          ),
         ),
         child: Text(label),
       ),

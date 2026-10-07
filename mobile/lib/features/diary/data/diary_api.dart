@@ -14,15 +14,17 @@ class DiaryApi {
     int? waterMl,
     double? latitude,
     double? longitude,
+    bool replaceDailyFields = false,
   }) async {
     final response = await _client.put<Map<String, dynamic>>(
       '/diary/${_dateOnly(date)}',
       data: {
-        if (sleepHours != null) 'sleep_hours': sleepHours,
+        if (sleepHours != null || replaceDailyFields) 'sleep_hours': sleepHours,
         if (sleepQuality != null) 'sleep_quality': sleepQuality,
-        if (stressLevel != null) 'stress_level': stressLevel,
+        if (stressLevel != null || replaceDailyFields)
+          'stress_level': stressLevel,
         if (caffeineIntake != null) 'caffeine_intake': caffeineIntake,
-        if (waterMl != null) 'water_ml': waterMl,
+        if (waterMl != null || replaceDailyFields) 'water_ml': waterMl,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
       },

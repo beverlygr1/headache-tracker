@@ -7,6 +7,8 @@ class UserProfile {
     this.timeZone,
     this.gender,
     this.birthDate,
+    this.onboardingStep = 0,
+    this.onboardingCompleted = false,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -18,6 +20,8 @@ class UserProfile {
       timeZone: json['time_zone'] as String?,
       gender: json['gender'] as String?,
       birthDate: birthDate is String ? DateTime.parse(birthDate) : null,
+      onboardingStep: json['onboarding_step'] as int? ?? 0,
+      onboardingCompleted: json['onboarding_completed'] as bool? ?? false,
     );
   }
 
@@ -27,4 +31,6 @@ class UserProfile {
   final String? timeZone;
   final String? gender;
   final DateTime? birthDate;
+  final int onboardingStep;
+  final bool onboardingCompleted;
 }
