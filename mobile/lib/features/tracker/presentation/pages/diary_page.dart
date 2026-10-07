@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/utils/russian_date.dart';
+import '../../../diary/data/daily_entry.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
@@ -12,11 +13,19 @@ class DiaryPage extends StatefulWidget {
   const DiaryPage({
     required this.controller,
     required this.onOpenAttack,
+    required this.onOpenDailyEntry,
+    this.dailyEntries = const [],
+    this.diaryError,
+    this.onRetryDiary,
     super.key,
   });
 
   final TrackerController controller;
   final ValueChanged<AttackRecord> onOpenAttack;
+  final ValueChanged<DateTime> onOpenDailyEntry;
+  final List<DailyEntry> dailyEntries;
+  final String? diaryError;
+  final VoidCallback? onRetryDiary;
 
   @override
   State<DiaryPage> createState() => _DiaryPageState();
@@ -82,6 +91,7 @@ class _DiaryPageState extends State<DiaryPage> {
                 _CalendarWeek(
                   today: anchorDate,
                   records: widget.controller.records,
+                  dailyEntries: widget.dailyEntries,
                 ),
               ],
             ),
@@ -111,9 +121,59 @@ class _DiaryPageState extends State<DiaryPage> {
           if (widget.controller.activeAttack != null)
             const SizedBox(height: 18),
           if (records.isEmpty)
-            const _EmptyDiary()
+            _EmptyDiary(
+              filtered: _filter != _DiaryFilter.all,
+              hasDailyEntries: widget.dailyEntries.isNotEmpty,
+              onCreateDailyEntry: () => widget.onOpenDailyEntry(DateTime.now()),
+            )
           else
             ..._buildRecordGroups(records, anchorDate),
+          if (widget.diaryError != null) ...[
+            const SizedBox(height: 16),
+            AppCard(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  const Text('Не удалось загрузить самочувствие'),
+                  const SizedBox(height: 8),
+                  Text(widget.diaryError!,
+                      style: const TextStyle(color: AppColors.muted)),
+                  TextButton(
+                      onPressed: widget.onRetryDiary,
+                      child: const Text('Повторить')),
+                ])),
+          ],
+          if (_filter == _DiaryFilter.all &&
+              widget.dailyEntries.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text('Самочувствие',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            for (final entry in widget.dailyEntries) ...[
+              AppCard(
+                onTap: () => widget.onOpenDailyEntry(entry.date),
+                child: Row(children: [
+                  const Icon(Icons.spa_outlined, color: AppColors.teal),
+                  const SizedBox(width: 14),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text(RussianDate.dayMonth(entry.date),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 6),
+                        Text(entry.summary,
+                            style: const TextStyle(
+                                color: AppColors.muted, fontSize: 12)),
+                      ])),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: AppColors.muted),
+                ]),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
         ],
       ),
     );
@@ -215,10 +275,12 @@ class _CalendarWeek extends StatelessWidget {
   const _CalendarWeek({
     required this.today,
     required this.records,
+    required this.dailyEntries,
   });
 
   final DateTime today;
   final List<AttackRecord> records;
+  final List<DailyEntry> dailyEntries;
 
   static const _weekdays = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
 
@@ -234,6 +296,8 @@ class _CalendarWeek extends StatelessWidget {
         final hasAttack = records.any(
           (record) => RussianDate.isSameDay(record.startTime, date),
         );
+        final hasDailyEntry = dailyEntries
+            .any((entry) => RussianDate.isSameDay(entry.date, date));
         return Expanded(
           child: Column(
             children: [
@@ -268,7 +332,11 @@ class _CalendarWeek extends StatelessWidget {
                 width: 5,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: hasAttack ? AppColors.blue : Colors.transparent,
+                  color: hasAttack
+                      ? AppColors.blue
+                      : hasDailyEntry
+                          ? AppColors.teal
+                          : Colors.transparent,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -355,20 +423,40 @@ class _AttackDiaryCard extends StatelessWidget {
 }
 
 class _EmptyDiary extends StatelessWidget {
-  const _EmptyDiary();
+  const _EmptyDiary(
+      {required this.filtered,
+      required this.hasDailyEntries,
+      required this.onCreateDailyEntry});
+  final bool filtered;
+  final bool hasDailyEntries;
+  final VoidCallback onCreateDailyEntry;
 
   @override
   Widget build(BuildContext context) {
-    return const AppCard(
+    return AppCard(
       child: Column(
         children: [
-          Icon(Icons.menu_book_outlined, color: AppColors.muted, size: 34),
-          SizedBox(height: 12),
+          const Icon(Icons.menu_book_outlined,
+              color: AppColors.muted, size: 34),
+          const SizedBox(height: 12),
           Text(
-            'Под выбранный фильтр записей нет',
+            filtered
+                ? 'Под выбранный фильтр приступов нет'
+                : hasDailyEntries
+                    ? 'Приступов пока нет'
+                    : 'Дневник начинается с первой записи',
             textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
+          if (!filtered && !hasDailyEntries) ...[
+            const SizedBox(height: 8),
+            const Text('Отмечайте самочувствие даже в дни без боли.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted)),
+            const SizedBox(height: 16),
+            PrimaryActionButton(
+                label: 'Отметить самочувствие', onPressed: onCreateDailyEntry),
+          ],
         ],
       ),
     );

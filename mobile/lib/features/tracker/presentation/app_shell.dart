@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/utils/russian_date.dart';
+import '../../diary/data/daily_entry.dart';
+import '../../diary/data/diary_repository.dart';
+import '../../diary/presentation/daily_entry_page.dart';
+import '../../onboarding/presentation/onboarding_page.dart';
 import '../domain/attack_record.dart';
 import '../state/tracker_controller.dart';
 import 'pages/attack_details_page.dart';
@@ -15,12 +20,16 @@ class AppShell extends StatefulWidget {
     this.userName,
     this.userEmail,
     this.onLogout,
+    this.diaryRepository,
+    this.initialAction = OnboardingAction.today,
     super.key,
   });
 
   final TrackerController controller;
   final String? userName;
   final String? userEmail;
+  final DiaryRepository? diaryRepository;
+  final OnboardingAction initialAction;
 
   /// `null` в демо-режиме: выходить не из чего.
   final Future<void> Function()? onLogout;
@@ -31,18 +40,100 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
+  late final DiaryRepository _diaryRepository;
+  List<DailyEntry> _dailyEntries = [];
+  String? _diaryError;
+  bool _openedInitialAction = false;
 
   @override
   void initState() {
     super.initState();
+    _diaryRepository = widget.diaryRepository ?? InMemoryDiaryRepository();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
     if (widget.controller.status == TrackerStatus.initial) {
-      widget.controller.load();
+      await widget.controller.load();
     }
+    if (!mounted) return;
+    await _loadDiary();
+    if (mounted && widget.controller.status == TrackerStatus.ready) {
+      _openInitialAction();
+    }
+  }
+
+  void _openInitialAction() {
+    if (_openedInitialAction) return;
+    _openedInitialAction = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _performAction(widget.initialAction);
+    });
+  }
+
+  Future<void> _loadDiary() async {
+    try {
+      final entries = await _diaryRepository.fetchAll();
+      entries.sort((a, b) => b.date.compareTo(a.date));
+      if (mounted) {
+        setState(() {
+          _dailyEntries = entries;
+          _diaryError = null;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _diaryError = describeError(error));
+    }
+  }
+
+  Future<void> _performAction(OnboardingAction action) async {
+    switch (action) {
+      case OnboardingAction.today:
+        setState(() => _selectedIndex = 0);
+      case OnboardingAction.attack:
+        await _openEditor(widget.controller.activeAttack);
+      case OnboardingAction.diary:
+        await _openDailyEntry();
+    }
+  }
+
+  Future<void> _openDailyEntry([DateTime? date]) async {
+    final entry =
+        await Navigator.of(context).push<DailyEntry>(MaterialPageRoute(
+      builder: (_) => DailyEntryPage(
+          repository: _diaryRepository, date: date ?? DateTime.now()),
+    ));
+    if (entry == null || !mounted) return;
+    setState(() {
+      _dailyEntries
+          .removeWhere((item) => RussianDate.isSameDay(item.date, entry.date));
+      _dailyEntries.add(entry);
+      _dailyEntries.sort((a, b) => b.date.compareTo(a.date));
+      _selectedIndex = 0;
+    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Самочувствие сохранено')));
+  }
+
+  Future<void> _showOnboarding() async {
+    final action =
+        await Navigator.of(context).push<OnboardingAction>(MaterialPageRoute(
+      builder: (routeContext) => OnboardingPage(
+        onStepChanged: (_) async {},
+        onFinished: (action) async => Navigator.of(routeContext).pop(action),
+      ),
+    ));
+    if (mounted && action != null) await _performAction(action);
   }
 
   Future<void> _refresh() async {
     try {
       await widget.controller.load();
+      if (!mounted) return;
+      await _loadDiary();
+      if (mounted && widget.controller.status == TrackerStatus.ready) {
+        _openInitialAction();
+      }
     } catch (error) {
       if (mounted) showErrorSnackBar(context, describeError(error));
     }
@@ -50,12 +141,7 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _openProfile() async {
     final onLogout = widget.onLogout;
-    if (onLogout == null) {
-      showErrorSnackBar(context, 'Демо-режим: данные хранятся только в памяти');
-      return;
-    }
-
-    final logout = await showModalBottomSheet<bool>(
+    final action = await showModalBottomSheet<_ProfileAction>(
       context: context,
       showDragHandle: true,
       backgroundColor: Colors.white,
@@ -79,16 +165,29 @@ class _AppShellState extends State<AppShell> {
               ],
               const SizedBox(height: 20),
               SecondaryActionButton(
-                label: 'Выйти из аккаунта',
-                onPressed: () => Navigator.pop(context, true),
+                label: 'Знакомство с приложением',
+                onPressed: () =>
+                    Navigator.pop(context, _ProfileAction.onboarding),
               ),
+              const SizedBox(height: 12),
+              if (onLogout != null)
+                SecondaryActionButton(
+                  label: 'Выйти из аккаунта',
+                  onPressed: () =>
+                      Navigator.pop(context, _ProfileAction.logout),
+                )
+              else
+                const Text('Демо-режим: записи хранятся только в памяти',
+                    style: TextStyle(color: AppColors.muted)),
             ],
           ),
         ),
       ),
     );
 
-    if (logout == true) await onLogout();
+    if (!mounted) return;
+    if (action == _ProfileAction.logout) await onLogout?.call();
+    if (action == _ProfileAction.onboarding) await _showOnboarding();
   }
 
   Future<void> _openEditor([AttackRecord? record]) async {
@@ -148,7 +247,7 @@ class _AppShellState extends State<AppShell> {
           case TrackerStatus.failure:
             body = ErrorRetryView(
               message: widget.controller.errorMessage ?? '',
-              onRetry: widget.controller.load,
+              onRetry: _refresh,
             );
           case TrackerStatus.ready:
             final page = _selectedIndex == 0
@@ -160,11 +259,19 @@ class _AppShellState extends State<AppShell> {
                     onCreateAttack: () =>
                         _openEditor(widget.controller.activeAttack),
                     onOpenAttack: _openDetails,
+                    onOpenDailyEntry: () => _openDailyEntry(),
+                    dailyEntries: _dailyEntries,
+                    diaryError: _diaryError,
+                    onRetryDiary: _loadDiary,
                   )
                 : DiaryPage(
                     key: const ValueKey('diary'),
                     controller: widget.controller,
                     onOpenAttack: _openDetails,
+                    dailyEntries: _dailyEntries,
+                    onOpenDailyEntry: _openDailyEntry,
+                    diaryError: _diaryError,
+                    onRetryDiary: _loadDiary,
                   );
             body = RefreshIndicator(
               onRefresh: _refresh,
@@ -190,3 +297,5 @@ class _AppShellState extends State<AppShell> {
     );
   }
 }
+
+enum _ProfileAction { onboarding, logout }

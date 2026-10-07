@@ -19,3 +19,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Onest
+      fonts:
+        - asset: assets/fonts/Onest.ttf
+          weight: 400
