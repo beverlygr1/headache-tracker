@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import ForeignKey, String, Integer, Float, Boolean, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base
+from app.models.base import Base
 
 
 class UserMedication(Base):
