@@ -285,31 +285,12 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   }
 
   Future<void> _addCustomOption({required bool isPainLocation}) async {
-    final controller = TextEditingController();
     final value = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isPainLocation ? 'Добавить область' : 'Добавить симптом'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(hintText: 'Введите название'),
-          onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Добавить'),
-          ),
-        ],
+      builder: (context) => _AddOptionDialog(
+        title: isPainLocation ? 'Добавить область' : 'Добавить симптом',
       ),
     );
-    controller.dispose();
 
     if (value == null || value.isEmpty || !mounted) return;
     setState(() {
@@ -341,6 +322,54 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
       setState(() {});
       showErrorSnackBar(context, describeError(error));
     }
+  }
+}
+
+/// Диалог владеет своим контроллером: после `pop` он ещё анимирует закрытие
+/// и перестраивает поле ввода, поэтому освобождать контроллер снаружи сразу
+/// после `showDialog` нельзя.
+class _AddOptionDialog extends StatefulWidget {
+  const _AddOptionDialog({required this.title});
+
+  final String title;
+
+  @override
+  State<_AddOptionDialog> createState() => _AddOptionDialogState();
+}
+
+class _AddOptionDialogState extends State<_AddOptionDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(hintText: 'Введите название'),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Добавить'),
+        ),
+      ],
+    );
   }
 }
 
