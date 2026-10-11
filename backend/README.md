@@ -16,6 +16,14 @@ FastAPI + PostgreSQL backend для проекта ГПО АОИ-2508.
 - Alembic migrations;
 - Swagger/OpenAPI;
 - интеграционный API-тест.
+- явная отметка наличия боли в дневнике (`headache_present`);
+- график интенсивности по дням (`GET /api/v1/analytics/intensity`);
+- одинаковые календарные периоды и часовые пояса для сводки и графика.
+
+Контракты спринта, примеры запросов и критерии приёмки:
+[../docs/SPRINT_BACKEND.md](../docs/SPRINT_BACKEND.md).
+Новая миграция `0003_diary_headache` сохраняет историю; старые дни остаются
+без отметки наличия боли (`null`).
 
 `/analytics/triggers`, PDF-экспорт и `/forecast/risk` намеренно отвечают `501 Not Implemented`: для них пока нет достоверной реализации.
 

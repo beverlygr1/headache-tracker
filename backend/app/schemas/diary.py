@@ -1,9 +1,13 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 
 class DiaryUpsertRequest(BaseModel):
+    headache_present: StrictBool | None = Field(
+        None,
+        description="true — боль была, false — боли не было, null — не указано. Пропущенное поле сохраняет прежнее значение.",
+    )
     sleep_hours: float | None = Field(None, ge=0, le=24)
     sleep_quality: int | None = Field(None, ge=1, le=10)
     stress_level: int | None = Field(None, ge=1, le=10)
@@ -17,6 +21,7 @@ class DiaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     date: date
+    headache_present: bool | None = None
     sleep_hours: float | None = None
     sleep_quality: int | None = None
     stress_level: int | None = None
