@@ -6,6 +6,7 @@ os.environ["JWT_SECRET_KEY"] = "test-secret-key-1234567890-abcdef-1234567890"
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.session import get_db
@@ -16,7 +17,13 @@ from app.models.base import Base
 @pytest.fixture
 def client(tmp_path):
     db_path = tmp_path / "test.db"
-    engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
+    test_url = os.environ.get("TEST_DATABASE_URL")
+    if test_url:
+        if not (make_url(test_url).database or "").endswith("_test"):
+            raise ValueError("TEST_DATABASE_URL must point to a disposable database ending in _test")
+        engine = create_engine(test_url)
+    else:
+        engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
     TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(bind=engine)
 

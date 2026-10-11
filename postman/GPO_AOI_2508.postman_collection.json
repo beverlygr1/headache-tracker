@@ -760,6 +760,128 @@
           }
         }
       ]
+    },
+    {
+      "name": "Sprint diary and analytics",
+      "item": [
+        {
+          "name": "Diary: explicitly no headache",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/diary/{{diaryDate}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"headache_present\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Diary: clear headache label",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/diary/{{diaryDate}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"headache_present\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Summary: local calendar week",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/analytics/summary?period=week&time_zone=Asia/Tomsk"
+          }
+        },
+        {
+          "name": "Intensity: local calendar week",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/analytics/intensity?period=week&time_zone=Asia/Tomsk"
+          }
+        },
+        {
+          "name": "Intensity: custom dates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/analytics/intensity?from_date=2026-10-01&to_date=2026-10-10&time_zone=Asia/Tomsk"
+          }
+        },
+        {
+          "name": "Attack: add extended fields to existing ID",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/attacks/{{attackId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pain_type\": \"Пульсирующая\",\n  \"medications\": [\n    \"Препарат, указанный пользователем\"\n  ],\n  \"relief_factors\": [\n    \"Отдых\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

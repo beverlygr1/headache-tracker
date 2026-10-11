@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -11,8 +11,11 @@ class DiaryEntry(TimestampMixin, Base):
     __table_args__ = (UniqueConstraint("user_id", "date", name="uq_diary_user_date"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     date: Mapped[date] = mapped_column(Date, index=True, nullable=False)
+    headache_present: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     sleep_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     sleep_quality: Mapped[int | None] = mapped_column(Integer, nullable=True)
     stress_level: Mapped[int | None] = mapped_column(Integer, nullable=True)

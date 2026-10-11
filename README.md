@@ -48,6 +48,13 @@ docker-compose.yml        PostgreSQL + backend
 6. `PUT/GET /api/v1/diary` — дневник факторов.
 7. `GET /api/v1/analytics/summary` — базовая статистика по реальным приступам.
 8. `GET /api/v1/analytics/export?format=csv` — CSV-выгрузка.
+9. `GET /api/v1/analytics/intensity` — график интенсивности по календарным дням.
+
+Дневник поддерживает `headache_present`: `true` (боль была), `false` (явно не было),
+`null` (не указано). Сводка и график принимают одинаковые периоды, собственные
+границы дат и `time_zone`. Перед запуском примените `alembic upgrade head`.
+Контракты для фронтендеров, примеры и правила пропусков — в
+[docs/SPRINT_BACKEND.md](docs/SPRINT_BACKEND.md).
 
 Пока намеренно не реализованы и возвращают HTTP 501:
 

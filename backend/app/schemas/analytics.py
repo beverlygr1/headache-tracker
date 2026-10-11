@@ -1,3 +1,4 @@
+from datetime import date
 from enum import Enum
 
 from pydantic import BaseModel
@@ -19,6 +20,27 @@ class AnalyticsSummaryResponse(BaseModel):
     total_attacks: int
     avg_intensity: float
     avg_duration_minutes: float
+    completed_attacks: int = 0
+    from_date: date
+    to_date: date
+    time_zone: str
+
+
+class IntensityPoint(BaseModel):
+    date: date
+    total_attacks: int
+    avg_intensity: float | None
+    max_intensity: int | None
+    diary_recorded: bool
+    headache_present: bool | None
+
+
+class AnalyticsIntensityResponse(BaseModel):
+    period: PeriodEnum
+    from_date: date
+    to_date: date
+    time_zone: str
+    points: list[IntensityPoint]
 
 
 class TriggerCorrelation(BaseModel):
