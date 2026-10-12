@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/api/api_client.dart';
 import '../features/attacks/data/attacks_api.dart';
 import '../features/auth/presentation/auth_page.dart';
 import '../features/auth/state/auth_controller.dart';
@@ -8,8 +9,8 @@ import '../features/diary/data/diary_repository.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 import '../features/tracker/data/attack_repository.dart';
 import '../features/tracker/presentation/app_shell.dart';
-import '../features/tracker/state/tracker_controller.dart';
 import '../features/tracker/presentation/widgets/common.dart';
+import '../features/tracker/state/tracker_controller.dart';
 
 /// Показывает вход, пока нет сессии, и дневник после авторизации.
 class AuthGate extends StatefulWidget {
@@ -17,12 +18,14 @@ class AuthGate extends StatefulWidget {
     required this.authController,
     required this.attacksApi,
     required this.diaryApi,
+    this.apiClient,
     super.key,
   });
 
   final AuthController authController;
   final AttacksApi attacksApi;
   final DiaryApi diaryApi;
+  final ApiClient? apiClient;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -112,6 +115,7 @@ class _AuthGateState extends State<AuthGate> {
       AuthStatus.authenticated => AppShell(
           key: ObjectKey(tracker),
           controller: tracker!,
+          apiClient: widget.apiClient,
           diaryRepository: ApiDiaryRepository(widget.diaryApi),
           initialAction: _initialAction,
           userName: widget.authController.profile?.name,
