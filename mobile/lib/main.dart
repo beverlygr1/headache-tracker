@@ -33,6 +33,7 @@ Widget _buildHome() {
 
   return AuthGate(
     authController: authController,
+    apiClient: client,
     attacksApi: AttacksApi(client),
     diaryApi: DiaryApi(client),
   );
