@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/utils/russian_date.dart';
+import '../../domain/attack_draft.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
+import 'attack_review_page.dart';
+import 'pain_zones_page.dart';
 
 class AttackEntryPage extends StatefulWidget {
   const AttackEntryPage({
@@ -23,10 +26,12 @@ class AttackEntryPage extends StatefulWidget {
 class _AttackEntryPageState extends State<AttackEntryPage> {
   late DateTime _startTime;
   late int _intensity;
-  late String _painLocation;
+  late Set<String> _painLocations;
   late Set<String> _symptoms;
+  bool _openingMap = false;
+  bool _openingReview = false;
 
-  final List<String> _painOptions = ['Лоб', 'Виски', 'Затылок'];
+  final List<String> _painOptions = ['Лоб', 'Виски', 'Темя', 'Затылок'];
   final List<String> _symptomOptions = ['Тошнота', 'Свет мешает'];
 
   @override
@@ -37,11 +42,13 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     _startTime = record?.startTime ??
         DateTime(now.year, now.month, now.day, now.hour, now.minute);
     _intensity = record?.intensity ?? 6;
-    _painLocation = record?.painLocation ?? 'Виски';
+    _painLocations = Set.of(
+      record == null ? const <String>[] : AttackDraft.zonesFromRecord(record),
+    );
     _symptoms = Set.of(record?.symptoms ?? const ['Свет мешает']);
 
-    if (!_painOptions.contains(_painLocation)) {
-      _painOptions.add(_painLocation);
+    for (final zone in _painLocations) {
+      if (!_painOptions.contains(zone)) _painOptions.add(zone);
     }
     for (final symptom in _symptoms) {
       if (!_symptomOptions.contains(symptom)) {
@@ -52,7 +59,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final saving = widget.controller.isSaving;
     return Scaffold(
       appBar: const BackTitleBar(title: 'Запись приступа'),
       body: SafeArea(
@@ -218,11 +224,10 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                   _ChoiceSection(
                     title: 'Где болит?',
                     options: _painOptions,
-                    selected: {_painLocation},
-                    onSelected: (option) {
-                      setState(() => _painLocation = option);
-                    },
+                    selected: _painLocations,
+                    onSelected: _togglePainZone,
                     onAdd: () => _addCustomOption(isPainLocation: true),
+                    onOpenMap: _choosePainZones,
                   ),
                   const SizedBox(height: 14),
                   _ChoiceSection(
@@ -254,8 +259,8 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
               child: PrimaryActionButton(
-                label: saving ? 'Сохранение…' : 'Сохранить приступ',
-                onPressed: saving ? null : _save,
+                label: 'Продолжить',
+                onPressed: _openingMap || _openingReview ? null : _openReview,
               ),
             ),
           ],
@@ -289,14 +294,19 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
       context: context,
       builder: (context) => _AddOptionDialog(
         title: isPainLocation ? 'Добавить область' : 'Добавить симптом',
+        maxLength: isPainLocation ? 120 : null,
       ),
     );
 
     if (value == null || value.isEmpty || !mounted) return;
+    if (isPainLocation && {..._painLocations, value}.join(', ').length > 120) {
+      showErrorSnackBar(context, 'Названия выбранных зон слишком длинные');
+      return;
+    }
     setState(() {
       if (isPainLocation) {
         if (!_painOptions.contains(value)) _painOptions.add(value);
-        _painLocation = value;
+        _painLocations.add(value);
       } else {
         if (!_symptomOptions.contains(value)) _symptomOptions.add(value);
         _symptoms.add(value);
@@ -304,23 +314,64 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     });
   }
 
-  Future<void> _save() async {
-    // Перерисовать кнопку в состоянии «Сохранение…».
-    final save = widget.controller.saveAttack(
-      id: widget.initialRecord?.id,
-      startTime: _startTime,
-      intensity: _intensity,
-      painLocation: _painLocation,
-      symptoms: _symptoms.toList(),
-    );
-    setState(() {});
+  void _togglePainZone(String zone) {
+    if (!_painLocations.contains(zone) &&
+        [..._painLocations, zone].join(', ').length > 120) {
+      showErrorSnackBar(context, 'Названия выбранных зон слишком длинные');
+      return;
+    }
+    setState(() {
+      if (!_painLocations.add(zone)) _painLocations.remove(zone);
+    });
+  }
+
+  Future<bool> _choosePainZones() async {
+    if (_openingMap) return false;
+    setState(() => _openingMap = true);
     try {
-      await save;
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (error) {
+      final selected = await Navigator.of(context).push<List<String>>(
+        MaterialPageRoute(
+          builder: (context) => PainZonesPage(
+            initialZones: _painLocations.toList(),
+          ),
+        ),
+      );
+      if (selected == null || !mounted) return false;
+      setState(() {
+        _painLocations = Set.of(selected);
+        for (final zone in selected) {
+          if (!_painOptions.contains(zone)) _painOptions.add(zone);
+        }
+      });
+      return true;
+    } finally {
+      if (mounted) setState(() => _openingMap = false);
+    }
+  }
+
+  Future<void> _openReview() async {
+    if (_openingReview || _openingMap) return;
+    setState(() => _openingReview = true);
+    try {
+      if (_painLocations.isEmpty && !await _choosePainZones()) return;
       if (!mounted) return;
-      setState(() {});
-      showErrorSnackBar(context, describeError(error));
+      final saved = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (context) => AttackReviewPage(
+            controller: widget.controller,
+            draft: AttackDraft(
+              id: widget.initialRecord?.id,
+              startTime: _startTime,
+              intensity: _intensity,
+              painZones: _painLocations,
+              symptoms: _symptoms,
+            ),
+          ),
+        ),
+      );
+      if (saved == true && mounted) Navigator.of(context).pop(true);
+    } finally {
+      if (mounted) setState(() => _openingReview = false);
     }
   }
 }
@@ -329,9 +380,10 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
 /// и перестраивает поле ввода, поэтому освобождать контроллер снаружи сразу
 /// после `showDialog` нельзя.
 class _AddOptionDialog extends StatefulWidget {
-  const _AddOptionDialog({required this.title});
+  const _AddOptionDialog({required this.title, this.maxLength});
 
   final String title;
+  final int? maxLength;
 
   @override
   State<_AddOptionDialog> createState() => _AddOptionDialogState();
@@ -356,6 +408,7 @@ class _AddOptionDialogState extends State<_AddOptionDialog> {
         controller: _controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
+        maxLength: widget.maxLength,
         decoration: const InputDecoration(hintText: 'Введите название'),
         onSubmitted: (_) => _submit(),
       ),
@@ -405,6 +458,7 @@ class _ChoiceSection extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     required this.onAdd,
+    this.onOpenMap,
   });
 
   final String title;
@@ -412,6 +466,7 @@ class _ChoiceSection extends StatelessWidget {
   final Set<String> selected;
   final ValueChanged<String> onSelected;
   final VoidCallback onAdd;
+  final VoidCallback? onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -419,9 +474,28 @@ class _ChoiceSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (onOpenMap != null)
+                TextButton(
+                  key: const ValueKey('open-pain-map'),
+                  onPressed: onOpenMap,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.blue,
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                  child: const Text('Выбрать на схеме'),
+                ),
+            ],
           ),
           const SizedBox(height: 13),
           Wrap(

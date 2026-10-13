@@ -135,7 +135,6 @@ class _AppShellState extends State<AppShell> {
           .removeWhere((item) => RussianDate.isSameDay(item.date, entry.date));
       _dailyEntries.add(entry);
       _dailyEntries.sort((a, b) => b.date.compareTo(a.date));
-      _selectedIndex = 0;
     });
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Самочувствие сохранено')));

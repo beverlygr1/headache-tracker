@@ -29,8 +29,11 @@ class ApiDiaryRepository implements DiaryRepository {
   @override
   Future<DailyEntry> save(DailyEntry entry) async => DailyEntry.fromJson(
         await _api.upsert(entry.date,
+            headachePresent: entry.headachePresent,
             sleepHours: entry.sleepHours,
+            sleepQuality: entry.sleepQuality,
             stressLevel: entry.stressLevel,
+            caffeineIntake: entry.caffeineIntake,
             waterMl: entry.waterMl,
             replaceDailyFields: true),
       );

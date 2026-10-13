@@ -210,7 +210,7 @@ class TodayPage extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             todayEntry?.summary ??
-                                'Сон, вода и стресс · около минуты',
+                                'Боль, сон, кофеин и вода · около минуты',
                             style: const TextStyle(
                               color: AppColors.muted,
                               fontSize: 11,
