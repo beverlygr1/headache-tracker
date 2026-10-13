@@ -49,3 +49,7 @@ def update_attack(db: Session, attack: Attack, values: dict) -> Attack:
 def delete_attack(db: Session, attack: Attack) -> None:
     db.delete(attack)
     db.commit()
+
+
+def list_start_times(db: Session, user_id: int) -> list[datetime]:
+    return list(db.execute(select(Attack.start_time).where(Attack.user_id == user_id)).scalars().all())

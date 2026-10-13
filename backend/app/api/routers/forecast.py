@@ -1,11 +1,18 @@
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter
 
-from app.api.deps import CurrentUser
+from app.api.deps import CurrentUser, DbSession
 from app.schemas.forecast import RiskForecastResponse
+from app.services.forecast import predict_probability
 
 router = APIRouter(prefix="/forecast", tags=["Прогнозирование"])
 
 
 @router.get("/risk", response_model=RiskForecastResponse)
-def get_risk_forecast(current_user: CurrentUser, lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=180)) -> RiskForecastResponse:
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="ML-прогноз риска пока не реализован. Endpoint зарезервирован под следующий этап проекта.")
+def get_risk_forecast(current_user: CurrentUser, db: DbSession) -> RiskForecastResponse:
+    probability = predict_probability(db, current_user)
+    return RiskForecastResponse(
+        risk_level=str(round(probability * 100)),
+        probability=probability,
+        factors=[],
+        recommendations=[],
+    )
