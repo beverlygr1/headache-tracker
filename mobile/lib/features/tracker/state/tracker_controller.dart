@@ -108,6 +108,10 @@ class TrackerController extends ChangeNotifier {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    bool clearPainType = false,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) {
     return _save(() {
       if (id != null && byId(id) != null) {
@@ -117,6 +121,10 @@ class TrackerController extends ChangeNotifier {
           intensity: intensity,
           painLocation: painLocation,
           symptoms: symptoms,
+          painType: painType,
+          clearPainType: clearPainType,
+          medications: medications,
+          reliefFactors: reliefFactors,
         );
       }
       return _repository.create(
@@ -124,6 +132,9 @@ class TrackerController extends ChangeNotifier {
         intensity: intensity,
         painLocation: painLocation,
         symptoms: symptoms,
+        painType: painType,
+        medications: medications,
+        reliefFactors: reliefFactors,
       );
     });
   }

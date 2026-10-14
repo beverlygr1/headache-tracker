@@ -11,6 +11,9 @@ abstract interface class AttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    List<String>? medications,
+    List<String>? reliefFactors,
   });
 
   Future<AttackRecord> update(
@@ -19,6 +22,10 @@ abstract interface class AttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    bool clearPainType = false,
+    List<String>? medications,
+    List<String>? reliefFactors,
   });
 
   Future<AttackRecord> finish(int id, DateTime endTime);
@@ -51,12 +58,18 @@ class ApiAttackRepository implements AttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) async {
     final dto = await _api.create(
       startTime: startTime,
       intensity: intensity,
       localization: painLocation,
       symptoms: symptoms,
+      painType: painType,
+      medications: medications,
+      reliefFactors: reliefFactors,
     );
     return _toRecord(dto);
   }
@@ -68,6 +81,10 @@ class ApiAttackRepository implements AttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    bool clearPainType = false,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) async {
     final dto = await _api.update(
       id,
@@ -75,6 +92,10 @@ class ApiAttackRepository implements AttackRepository {
       intensity: intensity,
       localization: painLocation,
       symptoms: symptoms,
+      painType: painType,
+      includePainType: clearPainType || painType != null,
+      medications: medications,
+      reliefFactors: reliefFactors,
     );
     return _toRecord(dto);
   }
@@ -92,6 +113,9 @@ class ApiAttackRepository implements AttackRepository {
       intensity: dto.intensity,
       painLocation: dto.localization ?? '',
       symptoms: dto.symptoms,
+      painType: dto.painType,
+      medications: dto.medications,
+      reliefFactors: dto.reliefFactors,
     );
   }
 }
@@ -114,6 +138,9 @@ class InMemoryAttackRepository implements AttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) async {
     final record = AttackRecord(
       id: _nextId++,
@@ -121,6 +148,9 @@ class InMemoryAttackRepository implements AttackRepository {
       intensity: intensity,
       painLocation: painLocation,
       symptoms: List.unmodifiable(symptoms),
+      painType: painType,
+      medications: List.unmodifiable(medications ?? const []),
+      reliefFactors: List.unmodifiable(reliefFactors ?? const []),
     );
     _records.add(record);
     return record;
@@ -133,6 +163,10 @@ class InMemoryAttackRepository implements AttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    bool clearPainType = false,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) async {
     return _replace(
       id,
@@ -141,6 +175,10 @@ class InMemoryAttackRepository implements AttackRepository {
         intensity: intensity,
         painLocation: painLocation,
         symptoms: symptoms,
+        painType: painType,
+        clearPainType: clearPainType,
+        medications: medications,
+        reliefFactors: reliefFactors,
       ),
     );
   }

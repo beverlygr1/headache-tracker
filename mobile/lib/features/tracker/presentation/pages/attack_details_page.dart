@@ -199,30 +199,67 @@ class _AttackFacts extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Где болит',
-            style: TextStyle(color: AppColors.muted, fontSize: 10),
+          _AttackFact(
+            label: 'Где болит',
+            value: record.painLocation.isEmpty
+                ? 'Не указано'
+                : record.painLocation,
           ),
-          const SizedBox(height: 6),
-          Text(
-            record.painLocation,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          const Divider(height: 28),
+          _AttackFact(
+            label: 'Характер боли',
+            value: record.painType?.isNotEmpty == true
+                ? record.painType!
+                : 'Не указан',
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 15),
-            child: Divider(height: 1),
+          const Divider(height: 28),
+          _AttackFact(
+            label: 'Сопутствующие симптомы',
+            value: record.symptoms.isEmpty
+                ? 'Не указаны'
+                : record.symptoms.join(', '),
           ),
-          const Text(
-            'Сопутствующие симптомы',
-            style: TextStyle(color: AppColors.muted, fontSize: 10),
+          const Divider(height: 28),
+          _AttackFact(
+            label: 'Препараты',
+            value: record.medications.isEmpty
+                ? 'Не указаны'
+                : record.medications.join(', '),
           ),
-          const SizedBox(height: 6),
-          Text(
-            record.symptoms.isEmpty ? 'Не указаны' : record.symptoms.join(', '),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          const Divider(height: 28),
+          _AttackFact(
+            label: 'Что помогло',
+            value: record.reliefFactors.isEmpty
+                ? 'Не указано'
+                : record.reliefFactors.join(', '),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AttackFact extends StatelessWidget {
+  const _AttackFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.muted, fontSize: 10),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

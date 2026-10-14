@@ -109,6 +109,9 @@ class _FailingRepository extends InMemoryAttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) async {
     throw error;
   }

@@ -5,6 +5,9 @@ class AttackRecord {
     required this.intensity,
     required this.painLocation,
     required this.symptoms,
+    this.painType,
+    this.medications = const [],
+    this.reliefFactors = const [],
     this.endTime,
   });
 
@@ -14,6 +17,9 @@ class AttackRecord {
   final int intensity;
   final String painLocation;
   final List<String> symptoms;
+  final String? painType;
+  final List<String> medications;
+  final List<String> reliefFactors;
 
   bool get isActive => endTime == null;
 
@@ -30,6 +36,10 @@ class AttackRecord {
     int? intensity,
     String? painLocation,
     List<String>? symptoms,
+    String? painType,
+    bool clearPainType = false,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) {
     return AttackRecord(
       id: id,
@@ -38,6 +48,9 @@ class AttackRecord {
       intensity: intensity ?? this.intensity,
       painLocation: painLocation ?? this.painLocation,
       symptoms: List.unmodifiable(symptoms ?? this.symptoms),
+      painType: clearPainType ? null : painType ?? this.painType,
+      medications: List.unmodifiable(medications ?? this.medications),
+      reliefFactors: List.unmodifiable(reliefFactors ?? this.reliefFactors),
     );
   }
 }

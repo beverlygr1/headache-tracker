@@ -50,8 +50,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('editor goes through map and review, writes only on Save',
-      (tester) async {
+  testWidgets('optional map and review write only on Save', (tester) async {
     _size(tester);
     final controller =
         TrackerController(repository: InMemoryAttackRepository());
@@ -62,7 +61,11 @@ void main() {
     ));
     await tester.tap(find.text('Начать'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Продолжить'));
+    await tester.tap(find.text('Дополнительные сведения'));
+    await tester.pumpAndSettle();
+    final openMap = find.byKey(const ValueKey('open-pain-map'));
+    await _reveal(tester, openMap);
+    await tester.tap(openMap);
     await tester.pumpAndSettle();
     expect(find.byType(PainZonesPage), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('pain-zone-forehead')));
@@ -71,6 +74,9 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('pain-zone-occiput')));
     await tester.pump();
+    await tester.tap(find.text('Продолжить'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AttackEntryPage), findsOneWidget);
     await tester.tap(find.text('Продолжить'));
     await tester.pumpAndSettle();
     expect(find.byType(AttackReviewPage), findsOneWidget);
@@ -96,6 +102,143 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('quick entry saves without preselected zones or symptoms',
+      (tester) async {
+    _size(tester);
+    final controller =
+        TrackerController(repository: InMemoryAttackRepository());
+    addTearDown(controller.dispose);
+    await controller.load();
+    await tester.pumpWidget(_host(
+      (_) => AttackEntryPage(controller: controller),
+    ));
+    await tester.tap(find.text('Начать'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ChoiceChip), findsNothing);
+    await tester.tap(find.text('Продолжить'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AttackReviewPage), findsOneWidget);
+    expect(find.byType(PainZonesPage), findsNothing);
+    await tester.tap(find.text('Сохранить приступ'));
+    await tester.pumpAndSettle();
+
+    await controller.load();
+    final saved = controller.records.single;
+    expect(saved.painLocation, isEmpty);
+    expect(saved.symptoms, isEmpty);
+    expect(saved.painType, isNull);
+    expect(saved.medications, isEmpty);
+    expect(saved.reliefFactors, isEmpty);
+  });
+
+  testWidgets('additional details persist and appear after reopening',
+      (tester) async {
+    _size(tester);
+    final controller =
+        TrackerController(repository: InMemoryAttackRepository());
+    addTearDown(controller.dispose);
+    await controller.load();
+    await tester.pumpWidget(_host(
+      (_) => AttackEntryPage(controller: controller),
+    ));
+    await tester.tap(find.text('Начать'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Дополнительные сведения'));
+    await tester.pumpAndSettle();
+
+    final pulsating = find.widgetWithText(ChoiceChip, 'Пульсирующая');
+    await _reveal(tester, pulsating);
+    await tester.tap(pulsating);
+    await tester.pump();
+    final forehead = find.widgetWithText(ChoiceChip, 'Лоб');
+    await _reveal(tester, forehead);
+    expect(tester.widget<ChoiceChip>(forehead).selected, isFalse);
+    final nausea = find.widgetWithText(ChoiceChip, 'Тошнота');
+    await _reveal(tester, nausea);
+    expect(tester.widget<ChoiceChip>(nausea).selected, isFalse);
+    final addMedication = find.byKey(const ValueKey('add-option-Препараты'));
+    await _reveal(tester, addMedication);
+    await tester.tap(addMedication);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Ибупрофен');
+    await tester.tap(find.widgetWithText(FilledButton, 'Добавить'));
+    await tester.pumpAndSettle();
+    final rest = find.widgetWithText(ChoiceChip, 'Отдых');
+    await _reveal(tester, rest);
+    await tester.tap(rest);
+    await tester.pump();
+
+    await tester.tap(find.text('Продолжить'));
+    await tester.pumpAndSettle();
+    expect(find.text('Пульсирующая'), findsOneWidget);
+    expect(find.text('Ибупрофен'), findsOneWidget);
+    expect(find.text('Отдых'), findsOneWidget);
+    await tester.tap(find.text('Сохранить приступ'));
+    await tester.pumpAndSettle();
+    await controller.load();
+    final saved = controller.records.single;
+    expect(saved.painType, 'Пульсирующая');
+    expect(saved.medications, ['Ибупрофен']);
+    expect(saved.reliefFactors, ['Отдых']);
+    expect(saved.painLocation, isEmpty);
+    expect(saved.symptoms, isEmpty);
+
+    await tester.pumpWidget(HeadacheTrackerApp(
+      home: AttackDetailsPage(controller: controller, recordId: saved.id),
+    ));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Ибупрофен'), 250);
+    expect(find.text('Ибупрофен'), findsOneWidget);
+    expect(find.text('Отдых'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('editing clears optional pain details without losing the attack',
+      (tester) async {
+    _size(tester);
+    final original = AttackRecord(
+      id: 4,
+      startTime: DateTime(2026, 10, 14, 9, 30),
+      intensity: 5,
+      painLocation: '',
+      symptoms: const [],
+      painType: 'Пульсирующая',
+      medications: const ['Ибупрофен'],
+      reliefFactors: const ['Отдых'],
+    );
+    final controller = TrackerController(
+      repository: InMemoryAttackRepository([original]),
+    );
+    addTearDown(controller.dispose);
+    await controller.load();
+    await tester.pumpWidget(_host(
+      (_) => AttackEntryPage(controller: controller, initialRecord: original),
+    ));
+    await tester.tap(find.text('Начать'));
+    await tester.pumpAndSettle();
+
+    for (final label in ['Пульсирующая', 'Ибупрофен', 'Отдых']) {
+      final chip = find.widgetWithText(ChoiceChip, label);
+      await _reveal(tester, chip);
+      expect(tester.widget<ChoiceChip>(chip).selected, isTrue);
+      await tester.tap(chip);
+      await tester.pump();
+    }
+    await tester.tap(find.text('Продолжить'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Сохранить приступ'));
+    await tester.pumpAndSettle();
+
+    await controller.load();
+    final edited = controller.records.single;
+    expect(edited.id, original.id);
+    expect(edited.painType, isNull);
+    expect(edited.medications, isEmpty);
+    expect(edited.reliefFactors, isEmpty);
+    expect(edited.intensity, original.intensity);
+  });
+
   testWidgets('cancelling the map discards its unconfirmed changes',
       (tester) async {
     _size(tester);
@@ -108,8 +251,9 @@ void main() {
     ));
     await tester.tap(find.text('Начать'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('open-pain-map')));
-    await tester.tap(find.byKey(const ValueKey('open-pain-map')));
+    final openMap = find.byKey(const ValueKey('open-pain-map'));
+    await _reveal(tester, openMap);
+    await tester.tap(openMap);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('pain-zone-forehead')));
     await tester.pump();
@@ -274,6 +418,20 @@ void _size(WidgetTester tester, [Size size = const Size(390, 844)]) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
+Future<void> _reveal(WidgetTester tester, Finder target) async {
+  await tester.scrollUntilVisible(target, 180);
+  final height = tester.getSize(find.byType(Scaffold).last).height;
+  for (var i = 0; i < 8; i++) {
+    final y = tester.getCenter(target).dy;
+    if (y > 80 && y < height - 140) return;
+    await tester.drag(
+      find.byType(ListView),
+      Offset(0, y >= height - 140 ? -150 : 150),
+    );
+    await tester.pumpAndSettle();
+  }
+}
+
 PrimaryActionButton _action(WidgetTester tester, String label) =>
     tester.widget(find.widgetWithText(PrimaryActionButton, label));
 
@@ -327,6 +485,9 @@ class _ControlledRepository extends InMemoryAttackRepository {
     required int intensity,
     required String painLocation,
     required List<String> symptoms,
+    String? painType,
+    List<String>? medications,
+    List<String>? reliefFactors,
   }) async {
     attempts++;
     if (failFirst && attempts == 1) {
@@ -338,6 +499,9 @@ class _ControlledRepository extends InMemoryAttackRepository {
       intensity: intensity,
       painLocation: painLocation,
       symptoms: symptoms,
+      painType: painType,
+      medications: medications,
+      reliefFactors: reliefFactors,
     );
   }
 }

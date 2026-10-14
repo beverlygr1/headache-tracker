@@ -28,11 +28,23 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   late int _intensity;
   late Set<String> _painLocations;
   late Set<String> _symptoms;
+  late String? _painType;
+  late Set<String> _medications;
+  late Set<String> _reliefFactors;
+  bool _showDetails = false;
   bool _openingMap = false;
   bool _openingReview = false;
 
   final List<String> _painOptions = ['Лоб', 'Виски', 'Темя', 'Затылок'];
   final List<String> _symptomOptions = ['Тошнота', 'Свет мешает'];
+  final List<String> _painTypeOptions = [
+    'Пульсирующая',
+    'Давящая',
+    'Ноющая',
+    'Острая',
+  ];
+  final List<String> _medicationOptions = [];
+  final List<String> _reliefOptions = ['Отдых', 'Сон', 'Тишина', 'Вода'];
 
   @override
   void initState() {
@@ -45,7 +57,11 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     _painLocations = Set.of(
       record == null ? const <String>[] : AttackDraft.zonesFromRecord(record),
     );
-    _symptoms = Set.of(record?.symptoms ?? const ['Свет мешает']);
+    _symptoms = Set.of(record?.symptoms ?? const <String>[]);
+    _painType = record?.painType;
+    _medications = Set.of(record?.medications ?? const <String>[]);
+    _reliefFactors = Set.of(record?.reliefFactors ?? const <String>[]);
+    _showDetails = record != null;
 
     for (final zone in _painLocations) {
       if (!_painOptions.contains(zone)) _painOptions.add(zone);
@@ -54,6 +70,17 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
       if (!_symptomOptions.contains(symptom)) {
         _symptomOptions.add(symptom);
       }
+    }
+    if (_painType != null && !_painTypeOptions.contains(_painType)) {
+      _painTypeOptions.add(_painType!);
+    }
+    for (final medication in _medications) {
+      if (!_medicationOptions.contains(medication)) {
+        _medicationOptions.add(medication);
+      }
+    }
+    for (final factor in _reliefFactors) {
+      if (!_reliefOptions.contains(factor)) _reliefOptions.add(factor);
     }
   }
 
@@ -71,6 +98,30 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
+                  const AppCard(
+                    color: AppColors.blueSoft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Быстрая запись',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Укажите время и силу боли. Остальное можно добавить позже.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   AppCard(
                     onTap: _selectStartTime,
                     child: Row(
@@ -221,38 +272,110 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _ChoiceSection(
-                    title: 'Где болит?',
-                    options: _painOptions,
-                    selected: _painLocations,
-                    onSelected: _togglePainZone,
-                    onAdd: () => _addCustomOption(isPainLocation: true),
-                    onOpenMap: _choosePainZones,
-                  ),
-                  const SizedBox(height: 14),
-                  _ChoiceSection(
-                    title: 'Что ещё чувствуете?',
-                    options: _symptomOptions,
-                    selected: _symptoms,
-                    onSelected: (option) {
-                      setState(() {
-                        if (!_symptoms.add(option)) {
-                          _symptoms.remove(option);
-                        }
-                      });
-                    },
-                    onAdd: () => _addCustomOption(isPainLocation: false),
-                  ),
-                  const SizedBox(height: 20),
-                  const Center(
-                    child: Text(
-                      'Дополнить запись можно позже',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 11,
-                      ),
+                  AppCard(
+                    key: const ValueKey('toggle-attack-details'),
+                    onTap: () => setState(() => _showDetails = !_showDetails),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Дополнительные сведения',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                'Характер боли, симптомы, препараты и облегчение',
+                                style: TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          _showDetails
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                          color: AppColors.blue,
+                        ),
+                      ],
                     ),
                   ),
+                  if (_showDetails) ...[
+                    const SizedBox(height: 14),
+                    _ChoiceSection(
+                      title: 'Характер боли',
+                      options: _painTypeOptions,
+                      selected: _painType == null
+                          ? const <String>{}
+                          : <String>{_painType!},
+                      onSelected: (option) => setState(() {
+                        _painType = _painType == option ? null : option;
+                      }),
+                      onAdd: _addCustomPainType,
+                    ),
+                    const SizedBox(height: 14),
+                    _ChoiceSection(
+                      title: 'Где болит?',
+                      options: _painOptions,
+                      selected: _painLocations,
+                      onSelected: _togglePainZone,
+                      onAdd: () => _addCustomOption(
+                        title: 'Добавить область',
+                        options: _painOptions,
+                        selected: _painLocations,
+                        maxLength: 120,
+                        isPainLocation: true,
+                      ),
+                      onOpenMap: _choosePainZones,
+                    ),
+                    const SizedBox(height: 14),
+                    _ChoiceSection(
+                      title: 'Что ещё чувствуете?',
+                      options: _symptomOptions,
+                      selected: _symptoms,
+                      onSelected: (option) => _toggle(_symptoms, option),
+                      onAdd: () => _addCustomOption(
+                        title: 'Добавить симптом',
+                        options: _symptomOptions,
+                        selected: _symptoms,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _ChoiceSection(
+                      title: 'Препараты',
+                      options: _medicationOptions,
+                      selected: _medications,
+                      onSelected: (option) => _toggle(_medications, option),
+                      onAdd: () => _addCustomOption(
+                        title: 'Добавить препарат',
+                        options: _medicationOptions,
+                        selected: _medications,
+                        maxLength: 80,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _ChoiceSection(
+                      title: 'Что помогло?',
+                      options: _reliefOptions,
+                      selected: _reliefFactors,
+                      onSelected: (option) => _toggle(_reliefFactors, option),
+                      onAdd: () => _addCustomOption(
+                        title: 'Добавить способ облегчения',
+                        options: _reliefOptions,
+                        selected: _reliefFactors,
+                        maxLength: 80,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -289,28 +412,50 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     });
   }
 
-  Future<void> _addCustomOption({required bool isPainLocation}) async {
+  Future<void> _addCustomOption({
+    required String title,
+    required List<String> options,
+    required Set<String> selected,
+    int? maxLength,
+    bool isPainLocation = false,
+  }) async {
     final value = await showDialog<String>(
       context: context,
       builder: (context) => _AddOptionDialog(
-        title: isPainLocation ? 'Добавить область' : 'Добавить симптом',
-        maxLength: isPainLocation ? 120 : null,
+        title: title,
+        maxLength: maxLength,
       ),
     );
 
     if (value == null || value.isEmpty || !mounted) return;
-    if (isPainLocation && {..._painLocations, value}.join(', ').length > 120) {
+    if (isPainLocation && {...selected, value}.join(', ').length > 120) {
       showErrorSnackBar(context, 'Названия выбранных зон слишком длинные');
       return;
     }
     setState(() {
-      if (isPainLocation) {
-        if (!_painOptions.contains(value)) _painOptions.add(value);
-        _painLocations.add(value);
-      } else {
-        if (!_symptomOptions.contains(value)) _symptomOptions.add(value);
-        _symptoms.add(value);
-      }
+      if (!options.contains(value)) options.add(value);
+      selected.add(value);
+    });
+  }
+
+  Future<void> _addCustomPainType() async {
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => const _AddOptionDialog(
+        title: 'Добавить характер боли',
+        maxLength: 80,
+      ),
+    );
+    if (value == null || value.isEmpty || !mounted) return;
+    setState(() {
+      if (!_painTypeOptions.contains(value)) _painTypeOptions.add(value);
+      _painType = value;
+    });
+  }
+
+  void _toggle(Set<String> selected, String value) {
+    setState(() {
+      if (!selected.add(value)) selected.remove(value);
     });
   }
 
@@ -353,7 +498,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     if (_openingReview || _openingMap) return;
     setState(() => _openingReview = true);
     try {
-      if (_painLocations.isEmpty && !await _choosePainZones()) return;
       if (!mounted) return;
       final saved = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
@@ -365,6 +509,9 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
               intensity: _intensity,
               painZones: _painLocations,
               symptoms: _symptoms,
+              painType: _painType,
+              medications: _medications,
+              reliefFactors: _reliefFactors,
             ),
           ),
         ),
@@ -521,8 +668,9 @@ class _ChoiceSection extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                 ),
               ActionChip(
+                key: ValueKey('add-option-$title'),
                 avatar: const Icon(Icons.add_rounded, size: 18),
-                label: const SizedBox.shrink(),
+                label: Text(options.isEmpty ? 'Добавить' : ''),
                 onPressed: onAdd,
                 backgroundColor: Colors.white,
                 side: const BorderSide(

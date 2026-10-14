@@ -43,6 +43,10 @@ class _AttackReviewPageState extends State<AttackReviewPage> {
         intensity: draft.intensity,
         painLocation: draft.painLocation,
         symptoms: draft.symptoms,
+        painType: draft.painType,
+        clearPainType: true,
+        medications: draft.medications,
+        reliefFactors: draft.reliefFactors,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
@@ -55,11 +59,10 @@ class _AttackReviewPageState extends State<AttackReviewPage> {
   @override
   Widget build(BuildContext context) {
     final draft = widget.draft;
-    final startLabel =
-        RussianDate.isSameDay(draft.startTime, DateTime.now())
-            ? 'Сегодня, ${RussianDate.time(draft.startTime)}'
-            : '${RussianDate.dayMonth(draft.startTime)}, '
-                '${RussianDate.time(draft.startTime)}';
+    final startLabel = RussianDate.isSameDay(draft.startTime, DateTime.now())
+        ? 'Сегодня, ${RussianDate.time(draft.startTime)}'
+        : '${RussianDate.dayMonth(draft.startTime)}, '
+            '${RussianDate.time(draft.startTime)}';
 
     return PopScope(
       canPop: !_submitting,
@@ -113,16 +116,24 @@ class _AttackReviewPageState extends State<AttackReviewPage> {
                             label: 'Интенсивность',
                             value: '${draft.intensity} из 10',
                           ),
+                          if (draft.painType != null) ...[
+                            const Divider(height: 26),
+                            _FactRow(
+                              label: 'Характер боли',
+                              value: draft.painType!,
+                            ),
+                          ],
                           const Divider(height: 26),
                           _FactRow(
                             label: 'Зоны боли',
-                            value: '${draft.painZones.length}',
+                            value: draft.painZones.isEmpty
+                                ? 'Не указаны'
+                                : '${draft.painZones.length}',
                           ),
-                          const SizedBox(height: 12),
-                          _FactChips(
-                            values: draft.painZones,
-                            emptyLabel: 'Не указаны',
-                          ),
+                          if (draft.painZones.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            _FactChips(values: draft.painZones),
+                          ],
                           if (draft.symptoms.isNotEmpty) ...[
                             const Divider(height: 26),
                             const Text(
@@ -134,6 +145,30 @@ class _AttackReviewPageState extends State<AttackReviewPage> {
                             ),
                             const SizedBox(height: 10),
                             _FactChips(values: draft.symptoms),
+                          ],
+                          if (draft.medications.isNotEmpty) ...[
+                            const Divider(height: 26),
+                            const Text(
+                              'Препараты',
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _FactChips(values: draft.medications),
+                          ],
+                          if (draft.reliefFactors.isNotEmpty) ...[
+                            const Divider(height: 26),
+                            const Text(
+                              'Что помогло',
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _FactChips(values: draft.reliefFactors),
                           ],
                         ],
                       ),
@@ -153,9 +188,10 @@ class _AttackReviewPageState extends State<AttackReviewPage> {
                           ),
                           SizedBox(height: 7),
                           Text(
-                            'Симптомы и обстоятельства доступны '
-                            'при редактировании записи.',
-                            style: TextStyle(fontSize: 11, color: AppColors.ink),
+                            'Зоны боли, симптомы, препараты и способы '
+                            'облегчения доступны при редактировании.',
+                            style:
+                                TextStyle(fontSize: 11, color: AppColors.ink),
                           ),
                         ],
                       ),
@@ -230,17 +266,16 @@ class _FactRow extends StatelessWidget {
 }
 
 class _FactChips extends StatelessWidget {
-  const _FactChips({required this.values, this.emptyLabel = 'Не указаны'});
+  const _FactChips({required this.values});
 
   final List<String> values;
-  final String emptyLabel;
 
   @override
   Widget build(BuildContext context) {
     if (values.isEmpty) {
-      return Text(
-        emptyLabel,
-        style: const TextStyle(color: AppColors.muted, fontSize: 11),
+      return const Text(
+        'Не указаны',
+        style: TextStyle(color: AppColors.muted, fontSize: 11),
       );
     }
     return Wrap(
