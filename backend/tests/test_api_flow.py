@@ -35,7 +35,8 @@ def test_auth_attack_diary_flow(client):
     assert "start_time" in csv_export.text
 
     forecast = client.get("/api/v1/forecast/risk", headers=headers)
-    assert forecast.status_code == 501
+    assert forecast.status_code == 200
+    assert 0.0 <= forecast.json()["probability"] <= 1.0
 
     deleted = client.delete(f"/api/v1/attacks/{attack_id}", headers=headers)
     assert deleted.status_code == 204
