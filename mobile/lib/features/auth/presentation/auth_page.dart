@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/config/server_settings.dart';
+import '../../settings/presentation/server_address_dialog.dart';
 import '../../tracker/presentation/widgets/common.dart';
 import '../../tracker/state/tracker_controller.dart';
 import '../state/auth_controller.dart';
@@ -8,10 +10,14 @@ import '../state/auth_controller.dart';
 class AuthPage extends StatefulWidget {
   const AuthPage({
     required this.controller,
+    this.serverSettings,
     super.key,
   });
 
   final AuthController controller;
+
+  /// Адрес сервера для смены прямо на экране входа. `null` в тестах.
+  final ServerSettings? serverSettings;
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -129,6 +135,25 @@ class _AuthPageState extends State<AuthPage> {
                           : 'Нет аккаунта? Зарегистрироваться',
                     ),
                   ),
+                  if (widget.serverSettings case final settings?) ...[
+                    const SizedBox(height: 18),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => showServerAddressDialog(context, settings),
+                        icon: const Icon(Icons.dns_outlined, size: 18),
+                        label: ListenableBuilder(
+                          listenable: settings,
+                          builder: (context, _) =>
+                              Text('Сервер: ${settings.displayAddress}'),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.muted,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
