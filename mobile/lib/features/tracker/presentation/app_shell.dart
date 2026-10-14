@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/utils/russian_date.dart';
+import '../../analytics/data/analytics_api.dart';
+import '../../analytics/presentation/analytics_page.dart';
+import '../../analytics/state/analytics_controller.dart';
 import '../../diary/data/daily_entry.dart';
 import '../../diary/data/diary_repository.dart';
 import '../../diary/presentation/daily_entry_page.dart';
@@ -21,6 +25,8 @@ class AppShell extends StatefulWidget {
     this.userEmail,
     this.onLogout,
     this.diaryRepository,
+    this.apiClient,
+    this.analyticsController,
     this.initialAction = OnboardingAction.today,
     super.key,
   });
@@ -29,6 +35,8 @@ class AppShell extends StatefulWidget {
   final String? userName;
   final String? userEmail;
   final DiaryRepository? diaryRepository;
+  final ApiClient? apiClient;
+  final AnalyticsController? analyticsController;
   final OnboardingAction initialAction;
 
   /// `null` в демо-режиме: выходить не из чего.
@@ -41,6 +49,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
   late final DiaryRepository _diaryRepository;
+  AnalyticsController? _analyticsController;
   List<DailyEntry> _dailyEntries = [];
   String? _diaryError;
   bool _openedInitialAction = false;
@@ -49,7 +58,24 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _diaryRepository = widget.diaryRepository ?? InMemoryDiaryRepository();
+
+    // Инициализация контроллера аналитики, если он передан или есть apiClient
+    if (widget.analyticsController != null) {
+      _analyticsController = widget.analyticsController;
+    } else if (widget.apiClient != null) {
+      _analyticsController = AnalyticsController(AnalyticsApi(widget.apiClient!));
+    }
+
     _initialize();
+  }
+
+  @override
+  void dispose() {
+    // Освобождаем контроллер аналитики только если создавали его внутри
+    if (widget.analyticsController == null) {
+      _analyticsController?.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _initialize() async {
@@ -109,7 +135,6 @@ class _AppShellState extends State<AppShell> {
           .removeWhere((item) => RussianDate.isSameDay(item.date, entry.date));
       _dailyEntries.add(entry);
       _dailyEntries.sort((a, b) => b.date.compareTo(a.date));
-      _selectedIndex = 0;
     });
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Самочувствие сохранено')));
@@ -131,6 +156,9 @@ class _AppShellState extends State<AppShell> {
       await widget.controller.load();
       if (!mounted) return;
       await _loadDiary();
+      if (_selectedIndex == 2 && _analyticsController != null) {
+        await _analyticsController!.loadAnalytics();
+      }
       if (mounted && widget.controller.status == TrackerStatus.ready) {
         _openInitialAction();
       }
@@ -217,7 +245,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _selectSection(int index) {
-    if (index <= 1) {
+    if (index <= 2) {
       setState(() => _selectedIndex = index);
       return;
     }
@@ -250,29 +278,46 @@ class _AppShellState extends State<AppShell> {
               onRetry: _refresh,
             );
           case TrackerStatus.ready:
-            final page = _selectedIndex == 0
-                ? TodayPage(
-                    key: const ValueKey('today'),
-                    controller: widget.controller,
-                    userName: widget.userName,
-                    onProfileTap: _openProfile,
-                    onCreateAttack: () =>
-                        _openEditor(widget.controller.activeAttack),
-                    onOpenAttack: _openDetails,
-                    onOpenDailyEntry: () => _openDailyEntry(),
-                    dailyEntries: _dailyEntries,
-                    diaryError: _diaryError,
-                    onRetryDiary: _loadDiary,
-                  )
-                : DiaryPage(
-                    key: const ValueKey('diary'),
-                    controller: widget.controller,
-                    onOpenAttack: _openDetails,
-                    dailyEntries: _dailyEntries,
-                    onOpenDailyEntry: _openDailyEntry,
-                    diaryError: _diaryError,
-                    onRetryDiary: _loadDiary,
-                  );
+            final Widget page;
+            if (_selectedIndex == 0) {
+              page = TodayPage(
+                key: const ValueKey('today'),
+                controller: widget.controller,
+                userName: widget.userName,
+                onProfileTap: _openProfile,
+                onCreateAttack: () =>
+                    _openEditor(widget.controller.activeAttack),
+                onOpenAttack: _openDetails,
+                onOpenDailyEntry: () => _openDailyEntry(),
+                dailyEntries: _dailyEntries,
+                diaryError: _diaryError,
+                onRetryDiary: _loadDiary,
+              );
+            } else if (_selectedIndex == 1) {
+              page = DiaryPage(
+                key: const ValueKey('diary'),
+                controller: widget.controller,
+                onOpenAttack: _openDetails,
+                dailyEntries: _dailyEntries,
+                onOpenDailyEntry: _openDailyEntry,
+                diaryError: _diaryError,
+                onRetryDiary: _loadDiary,
+              );
+            } else if (_selectedIndex == 2) {
+              if (_analyticsController != null) {
+                page = AnalyticsPage(
+                  key: const ValueKey('analytics'),
+                  controller: _analyticsController!,
+                );
+              } else {
+                page = const Center(
+                  child: Text('Контроллер аналитики не проинициализирован'),
+                );
+              }
+            } else {
+              page = const SizedBox.shrink();
+            }
+
             body = RefreshIndicator(
               onRefresh: _refresh,
               child: AnimatedSwitcher(

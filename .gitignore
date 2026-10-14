@@ -14,6 +14,7 @@ backend/.env
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
+.flutter_tool_state
 .packages
 .pub-cache/
 
@@ -25,3 +26,6 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local verification logs
+/verification/

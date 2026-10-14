@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +24,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost", "http://127.0.0.1"]
     # Flutter web (`flutter run -d chrome`) поднимается на случайном порту localhost.
     cors_origin_regex: str | None = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+    ml_model_path: Path = Path(__file__).resolve().parents[1] / "ml" / "headache_next_day_model.joblib"
+    ml_meta_path: Path = Path(__file__).resolve().parents[1] / "ml" / "model_meta.json"
 
 
 @lru_cache

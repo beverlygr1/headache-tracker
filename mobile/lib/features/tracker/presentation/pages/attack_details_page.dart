@@ -61,7 +61,8 @@ class AttackDetailsPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Padding(
+                          const Expanded(
+                              child: Padding(
                             padding: EdgeInsets.only(bottom: 2),
                             child: Text(
                               'Ощутимая боль',
@@ -70,7 +71,7 @@ class AttackDetailsPage extends StatelessWidget {
                                 fontSize: 11,
                               ),
                             ),
-                          ),
+                          )),
                         ],
                       ),
                       const SizedBox(height: 14),

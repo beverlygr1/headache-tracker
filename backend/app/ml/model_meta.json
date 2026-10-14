@@ -1,0 +1,42 @@
+{
+  "model_name": "headache_next_day_logreg",
+  "created_at": "2026-09-30T03:31:47",
+  "sklearn_version": "1.8.0",
+  "target": "target_next_day_attack (1 = приступ головной боли на следующий день)",
+  "feature_cols": [
+    "stress",
+    "excess_sleep",
+    "lack_of_sleep",
+    "exercise_trigger",
+    "no_exercise_trigger",
+    "physical_fatigue",
+    "menstrual_phase",
+    "ovulation_phase",
+    "excessive_emotional_change",
+    "weather_change",
+    "excessive_sunlight",
+    "noise",
+    "poor_lighting",
+    "specific_smell",
+    "excessive_alcohol",
+    "irregular_meals",
+    "overeating",
+    "excessive_caffeine",
+    "excessive_smoking",
+    "cheese_chocolate",
+    "travel",
+    "other_trigger",
+    "days_since_last_attack",
+    "attacks_last_7_records"
+  ],
+  "missing_feature_default": 0,
+  "threshold": 0.5,
+  "metrics_test": {
+    "precision": 0.5833,
+    "recall": 0.0312,
+    "f1": 0.0593,
+    "roc_auc": 0.7096
+  },
+  "train_rows": 3390,
+  "test_rows": 913
+}

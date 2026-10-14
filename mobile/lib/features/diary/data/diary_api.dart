@@ -7,6 +7,7 @@ class DiaryApi {
 
   Future<Map<String, dynamic>> upsert(
     DateTime date, {
+    bool? headachePresent,
     double? sleepHours,
     int? sleepQuality,
     int? stressLevel,
@@ -19,11 +20,15 @@ class DiaryApi {
     final response = await _client.put<Map<String, dynamic>>(
       '/diary/${_dateOnly(date)}',
       data: {
+        if (headachePresent != null || replaceDailyFields)
+          'headache_present': headachePresent,
         if (sleepHours != null || replaceDailyFields) 'sleep_hours': sleepHours,
-        if (sleepQuality != null) 'sleep_quality': sleepQuality,
+        if (sleepQuality != null || replaceDailyFields)
+          'sleep_quality': sleepQuality,
         if (stressLevel != null || replaceDailyFields)
           'stress_level': stressLevel,
-        if (caffeineIntake != null) 'caffeine_intake': caffeineIntake,
+        if (caffeineIntake != null || replaceDailyFields)
+          'caffeine_intake': caffeineIntake,
         if (waterMl != null || replaceDailyFields) 'water_ml': waterMl,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
