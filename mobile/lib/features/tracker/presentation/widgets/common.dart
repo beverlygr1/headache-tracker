@@ -281,10 +281,12 @@ class AppBottomNavigation extends StatelessWidget {
 class BackTitleBar extends StatelessWidget implements PreferredSizeWidget {
   const BackTitleBar({
     required this.title,
+    this.subtitle,
     super.key,
   });
 
   final String title;
+  final String? subtitle;
 
   @override
   Size get preferredSize => const Size.fromHeight(66);
@@ -302,7 +304,26 @@ class BackTitleBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       titleSpacing: 8,
-      title: Text(title),
+      title: subtitle == null
+          ? Text(title)
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

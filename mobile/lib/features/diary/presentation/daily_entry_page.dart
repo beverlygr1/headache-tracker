@@ -21,9 +21,13 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
   final _formKey = GlobalKey<FormState>();
   final _sleep = TextEditingController();
   final _water = TextEditingController();
+  final _caffeine = TextEditingController();
+  bool? _headachePresent;
+  int? _sleepQuality;
   int? _stress;
   bool _loading = true;
   bool _saving = false;
+  bool _hasExistingEntry = false;
   String? _loadError;
   String? _saveError;
 
@@ -37,6 +41,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
   void dispose() {
     _sleep.dispose();
     _water.dispose();
+    _caffeine.dispose();
     super.dispose();
   }
 
@@ -48,10 +53,14 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
     try {
       final entry = await widget.repository.fetchByDate(widget.date);
       if (!mounted) return;
+      _hasExistingEntry = entry != null;
       _sleep.text = entry?.sleepHours == null
           ? ''
           : DailyEntry.formatHours(entry!.sleepHours!);
       _water.text = entry?.waterMl?.toString() ?? '';
+      _caffeine.text = entry?.caffeineIntake?.toString() ?? '';
+      _headachePresent = entry?.headachePresent;
+      _sleepQuality = entry?.sleepQuality;
       _stress = entry?.stressLevel;
     } catch (error) {
       if (mounted) _loadError = describeError(error);
@@ -62,8 +71,12 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
 
   Future<void> _save() async {
     if (_saving || !_formKey.currentState!.validate()) return;
-    if (_sleep.text.trim().isEmpty &&
+    if (!_hasExistingEntry &&
+        _sleep.text.trim().isEmpty &&
         _water.text.trim().isEmpty &&
+        _caffeine.text.trim().isEmpty &&
+        _headachePresent == null &&
+        _sleepQuality == null &&
         _stress == null) {
       setState(() => _saveError = 'Заполните хотя бы один пункт');
       return;
@@ -75,8 +88,11 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
     try {
       final entry = await widget.repository.save(DailyEntry(
         date: widget.date,
+        headachePresent: _headachePresent,
         sleepHours: double.tryParse(_sleep.text.trim().replaceAll(',', '.')),
+        sleepQuality: _sleepQuality,
         waterMl: int.tryParse(_water.text.trim()),
+        caffeineIntake: int.tryParse(_caffeine.text.trim()),
         stressLevel: _stress,
       ));
       if (mounted) Navigator.of(context).pop(entry);
@@ -111,6 +127,45 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                 TextStyle(color: AppColors.muted, height: 1.5)),
                         const SizedBox(height: 24),
                         AppCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const _FieldTitle(
+                                icon: Icons.favorite_border_rounded,
+                                title: 'Была ли сегодня головная боль?',
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(spacing: 8, runSpacing: 8, children: [
+                                ChoiceChip(
+                                  key: const ValueKey('headache-yes'),
+                                  label: const Text('Да, была'),
+                                  selected: _headachePresent == true,
+                                  showCheckmark: false,
+                                  selectedColor: AppColors.blueSoft,
+                                  onSelected: _saving
+                                      ? null
+                                      : (selected) => setState(() =>
+                                          _headachePresent =
+                                              selected ? true : null),
+                                ),
+                                ChoiceChip(
+                                  key: const ValueKey('headache-no'),
+                                  label: const Text('Нет, не было'),
+                                  selected: _headachePresent == false,
+                                  showCheckmark: false,
+                                  selectedColor: AppColors.mint,
+                                  onSelected: _saving
+                                      ? null
+                                      : (selected) => setState(() =>
+                                          _headachePresent =
+                                              selected ? false : null),
+                                ),
+                              ]),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        AppCard(
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -119,6 +174,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                   title: 'Сколько вы спали?'),
                               const SizedBox(height: 12),
                               TextFormField(
+                                key: const ValueKey('sleep-hours-field'),
                                 controller: _sleep,
                                 enabled: !_saving,
                                 keyboardType:
@@ -146,6 +202,17 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                               ),
                             ])),
                         const SizedBox(height: 16),
+                        _RatingCard(
+                          title: 'Как вы спали?',
+                          hint: '1 — очень плохо, 10 — отлично',
+                          icon: Icons.nights_stay_outlined,
+                          value: _sleepQuality,
+                          enabled: !_saving,
+                          keyPrefix: 'sleep-quality',
+                          onChanged: (value) =>
+                              setState(() => _sleepQuality = value),
+                        ),
+                        const SizedBox(height: 16),
                         AppCard(
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,6 +222,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                   title: 'Сколько воды выпили?'),
                               const SizedBox(height: 12),
                               TextFormField(
+                                key: const ValueKey('water-field'),
                                 controller: _water,
                                 enabled: !_saving,
                                 keyboardType: TextInputType.number,
@@ -183,28 +251,43 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                               const _FieldTitle(
-                                  icon: Icons.spa_outlined,
-                                  title: 'Насколько напряжённым был день?'),
-                              const SizedBox(height: 8),
-                              const Text('1 — спокойно, 10 — сильный стресс',
-                                  style: TextStyle(
-                                      color: AppColors.muted, fontSize: 12)),
+                                  icon: Icons.coffee_outlined,
+                                  title: 'Сколько кофеина употребили?'),
                               const SizedBox(height: 12),
-                              Wrap(spacing: 8, runSpacing: 8, children: [
-                                for (var level = 1; level <= 10; level++)
-                                  ChoiceChip(
-                                    label: Text('$level'),
-                                    selected: _stress == level,
-                                    showCheckmark: false,
-                                    selectedColor: AppColors.blueSoft,
-                                    onSelected: _saving
-                                        ? null
-                                        : (selected) => setState(() =>
-                                            _stress = selected ? level : null),
-                                    tooltip: 'Уровень стресса $level из 10',
-                                  ),
-                              ]),
+                              TextFormField(
+                                key: const ValueKey('caffeine-field'),
+                                controller: _caffeine,
+                                enabled: !_saving,
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                    labelText: 'Количество кофеина',
+                                    hintText: 'Например, 120',
+                                    suffixText: 'мг',
+                                    border: OutlineInputBorder()),
+                                validator: (text) {
+                                  if (text == null || text.trim().isEmpty) {
+                                    return null;
+                                  }
+                                  final value = int.tryParse(text.trim());
+                                  return value == null ||
+                                          value < 0 ||
+                                          value > 2147483647
+                                      ? 'Введите целое неотрицательное число'
+                                      : null;
+                                },
+                              ),
                             ])),
+                        const SizedBox(height: 16),
+                        _RatingCard(
+                          title: 'Насколько напряжённым был день?',
+                          hint: '1 — спокойно, 10 — сильный стресс',
+                          icon: Icons.spa_outlined,
+                          value: _stress,
+                          enabled: !_saving,
+                          keyPrefix: 'stress',
+                          onChanged: (value) => setState(() => _stress = value),
+                        ),
                         const SizedBox(height: 16),
                         const AppCard(
                             color: AppColors.mint,
@@ -254,4 +337,52 @@ class _FieldTitle extends StatelessWidget {
         Expanded(
             child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
       ]);
+}
+
+class _RatingCard extends StatelessWidget {
+  const _RatingCard({
+    required this.title,
+    required this.hint,
+    required this.icon,
+    required this.value,
+    required this.enabled,
+    required this.keyPrefix,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String hint;
+  final IconData icon;
+  final int? value;
+  final bool enabled;
+  final String keyPrefix;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _FieldTitle(icon: icon, title: title),
+            const SizedBox(height: 8),
+            Text(hint,
+                style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (var level = 1; level <= 10; level++)
+                ChoiceChip(
+                  key: ValueKey('$keyPrefix-$level'),
+                  label: Text('$level'),
+                  selected: value == level,
+                  showCheckmark: false,
+                  selectedColor: AppColors.blueSoft,
+                  onSelected: enabled
+                      ? (selected) => onChanged(selected ? level : null)
+                      : null,
+                  tooltip: '$title: $level из 10',
+                ),
+            ]),
+          ],
+        ),
+      );
 }
