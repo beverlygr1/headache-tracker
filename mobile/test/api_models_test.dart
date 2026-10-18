@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:headache_tracker_app/core/api/api_exception.dart';
+import 'package:headache_tracker_app/core/api/api_client.dart';
+import 'package:headache_tracker_app/core/storage/token_storage.dart';
+import 'package:headache_tracker_app/features/attacks/data/attacks_api.dart';
 import 'package:headache_tracker_app/features/attacks/data/attack_dto.dart';
 
 void main() {
@@ -39,6 +42,64 @@ void main() {
       final local = DateTime.utc(2026, 9, 23, 6, 30).toLocal();
       expect(formatApiDateTime(local), '2026-09-23T06:30:00.000Z');
     });
+  });
+
+  test('attack API sends and clears optional details', () async {
+    final requests = <RequestOptions>[];
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      requests.add(options);
+      final sent = options.data as Map<String, dynamic>;
+      handler.resolve(Response<Map<String, dynamic>>(
+        requestOptions: options,
+        statusCode: options.method == 'POST' ? 201 : 200,
+        data: {
+          'id': 1,
+          'user_id': 1,
+          'start_time': sent['start_time'],
+          'end_time': null,
+          'intensity': sent['intensity'],
+          'pain_type': sent['pain_type'],
+          'localization': sent['localization'],
+          'medications': sent['medications'],
+          'symptoms': sent['symptoms'],
+          'relief_factors': sent['relief_factors'],
+        },
+      ));
+    }));
+    final api = AttacksApi(ApiClient(dio: dio, tokenStorage: _NoTokens()));
+    final start = DateTime(2026, 10, 14, 9, 30);
+
+    final created = await api.create(
+      startTime: start,
+      intensity: 5,
+      painType: 'Пульсирующая',
+      localization: '',
+      medications: ['Ибупрофен'],
+      symptoms: [],
+      reliefFactors: ['Отдых'],
+    );
+    expect(created.medications, ['Ибупрофен']);
+    expect(created.reliefFactors, ['Отдых']);
+    expect(requests.first.data, containsPair('pain_type', 'Пульсирующая'));
+    expect(requests.first.data, containsPair('medications', ['Ибупрофен']));
+    expect(requests.first.data, containsPair('relief_factors', ['Отдых']));
+
+    await api.update(
+      1,
+      startTime: start,
+      intensity: 5,
+      includePainType: true,
+      localization: '',
+      medications: [],
+      symptoms: [],
+      reliefFactors: [],
+    );
+    final updatedPayload = requests.last.data as Map<String, dynamic>;
+    expect(updatedPayload.containsKey('pain_type'), isTrue);
+    expect(updatedPayload['pain_type'], isNull);
+    expect(updatedPayload['medications'], isEmpty);
+    expect(updatedPayload['relief_factors'], isEmpty);
   });
 
   group('ApiException', () {
@@ -92,4 +153,9 @@ void main() {
       expect(error.message, 'Нет соединения с сервером');
     });
   });
+}
+
+class _NoTokens extends TokenStorage {
+  @override
+  Future<String?> getAccessToken() async => null;
 }

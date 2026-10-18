@@ -382,7 +382,9 @@ class _AttackDiaryCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   record.isActive
-                      ? 'Боль в ${record.painLocation.toLowerCase()}'
+                      ? record.painLocation.isEmpty
+                          ? 'Приступ головной боли'
+                          : 'Боль в ${record.painLocation.toLowerCase()}'
                       : 'Умеренная боль',
                   style: const TextStyle(
                     fontSize: 13,

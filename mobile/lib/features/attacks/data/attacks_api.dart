@@ -16,6 +16,7 @@ class AttacksApi {
     String? localization,
     List<String>? medications,
     List<String>? symptoms,
+    List<String>? reliefFactors,
   }) async {
     final response = await _client.post<Map<String, dynamic>>(
       '/attacks',
@@ -26,6 +27,7 @@ class AttacksApi {
         if (localization != null) 'localization': localization,
         if (medications != null) 'medications': medications,
         if (symptoms != null) 'symptoms': symptoms,
+        if (reliefFactors != null) 'relief_factors': reliefFactors,
       },
     );
 
@@ -38,7 +40,9 @@ class AttacksApi {
     DateTime? endTime,
     int? intensity,
     String? painType,
+    bool includePainType = false,
     String? localization,
+    List<String>? medications,
     List<String>? symptoms,
     List<String>? reliefFactors,
   }) async {
@@ -48,8 +52,9 @@ class AttacksApi {
         if (startTime != null) 'start_time': formatApiDateTime(startTime),
         if (endTime != null) 'end_time': formatApiDateTime(endTime),
         if (intensity != null) 'intensity': intensity,
-        if (painType != null) 'pain_type': painType,
+        if (includePainType || painType != null) 'pain_type': painType,
         if (localization != null) 'localization': localization,
+        if (medications != null) 'medications': medications,
         if (symptoms != null) 'symptoms': symptoms,
         if (reliefFactors != null) 'relief_factors': reliefFactors,
       },
