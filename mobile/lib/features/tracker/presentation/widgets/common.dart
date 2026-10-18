@@ -333,11 +333,17 @@ class ErrorRetryView extends StatelessWidget {
   const ErrorRetryView({
     required this.message,
     required this.onRetry,
+    this.secondaryLabel,
+    this.onSecondary,
     super.key,
   });
 
   final String message;
   final VoidCallback onRetry;
+
+  /// Дополнительное действие под «Повторить», например смена адреса сервера.
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -370,6 +376,13 @@ class ErrorRetryView extends StatelessWidget {
               icon: Icons.refresh_rounded,
               onPressed: onRetry,
             ),
+            if (secondaryLabel != null && onSecondary != null) ...[
+              const SizedBox(height: 10),
+              SecondaryActionButton(
+                label: secondaryLabel!,
+                onPressed: onSecondary!,
+              ),
+            ],
           ],
         ),
       ),

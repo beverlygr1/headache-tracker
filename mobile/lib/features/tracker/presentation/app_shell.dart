@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/config/server_settings.dart';
 import '../../../core/utils/russian_date.dart';
 import '../../analytics/data/analytics_api.dart';
 import '../../analytics/presentation/analytics_page.dart';
@@ -10,6 +11,7 @@ import '../../diary/data/daily_entry.dart';
 import '../../diary/data/diary_repository.dart';
 import '../../diary/presentation/daily_entry_page.dart';
 import '../../onboarding/presentation/onboarding_page.dart';
+import '../../settings/presentation/server_address_dialog.dart';
 import '../domain/attack_record.dart';
 import '../state/tracker_controller.dart';
 import 'pages/attack_details_page.dart';
@@ -26,6 +28,7 @@ class AppShell extends StatefulWidget {
     this.onLogout,
     this.diaryRepository,
     this.apiClient,
+    this.serverSettings,
     this.analyticsController,
     this.initialAction = OnboardingAction.today,
     super.key,
@@ -38,6 +41,9 @@ class AppShell extends StatefulWidget {
   final ApiClient? apiClient;
   final AnalyticsController? analyticsController;
   final OnboardingAction initialAction;
+
+  /// Адрес сервера, который можно поменять из профиля. `null` в демо-режиме.
+  final ServerSettings? serverSettings;
 
   /// `null` в демо-режиме: выходить не из чего.
   final Future<void> Function()? onLogout;
@@ -198,6 +204,14 @@ class _AppShellState extends State<AppShell> {
                     Navigator.pop(context, _ProfileAction.onboarding),
               ),
               const SizedBox(height: 12),
+              if (widget.serverSettings case final settings?) ...[
+                SecondaryActionButton(
+                  label: 'Адрес сервера: ${settings.displayAddress}',
+                  onPressed: () =>
+                      Navigator.pop(context, _ProfileAction.server),
+                ),
+                const SizedBox(height: 12),
+              ],
               if (onLogout != null)
                 SecondaryActionButton(
                   label: 'Выйти из аккаунта',
@@ -216,6 +230,15 @@ class _AppShellState extends State<AppShell> {
     if (!mounted) return;
     if (action == _ProfileAction.logout) await onLogout?.call();
     if (action == _ProfileAction.onboarding) await _showOnboarding();
+    if (action == _ProfileAction.server) await _changeServer();
+  }
+
+  Future<void> _changeServer() async {
+    final settings = widget.serverSettings;
+    if (settings == null) return;
+    if (await showServerAddressDialog(context, settings)) {
+      await _refresh();
+    }
   }
 
   Future<void> _openEditor([AttackRecord? record]) async {
@@ -276,6 +299,9 @@ class _AppShellState extends State<AppShell> {
             body = ErrorRetryView(
               message: widget.controller.errorMessage ?? '',
               onRetry: _refresh,
+              secondaryLabel:
+                  widget.serverSettings == null ? null : 'Адрес сервера',
+              onSecondary: _changeServer,
             );
           case TrackerStatus.ready:
             final Widget page;
@@ -343,4 +369,4 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-enum _ProfileAction { onboarding, logout }
+enum _ProfileAction { onboarding, server, logout }

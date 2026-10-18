@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../core/api/api_client.dart';
+import '../core/config/server_settings.dart';
 import '../features/attacks/data/attacks_api.dart';
 import '../features/auth/presentation/auth_page.dart';
 import '../features/auth/state/auth_controller.dart';
 import '../features/diary/data/diary_api.dart';
 import '../features/diary/data/diary_repository.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
+import '../features/settings/presentation/server_address_dialog.dart';
 import '../features/tracker/data/attack_repository.dart';
 import '../features/tracker/presentation/app_shell.dart';
 import '../features/tracker/presentation/widgets/common.dart';
@@ -19,6 +21,7 @@ class AuthGate extends StatefulWidget {
     required this.attacksApi,
     required this.diaryApi,
     this.apiClient,
+    this.serverSettings,
     super.key,
   });
 
@@ -26,6 +29,9 @@ class AuthGate extends StatefulWidget {
   final AttacksApi attacksApi;
   final DiaryApi diaryApi;
   final ApiClient? apiClient;
+
+  /// Адрес сервера, который можно поменять в приложении. `null` в тестах.
+  final ServerSettings? serverSettings;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -88,6 +94,14 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
+  Future<void> _changeServer() async {
+    final settings = widget.serverSettings;
+    if (settings == null) return;
+    if (await showServerAddressDialog(context, settings)) {
+      await widget.authController.restoreSession();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tracker = _tracker;
@@ -96,12 +110,18 @@ class _AuthGateState extends State<AuthGate> {
       AuthStatus.unknown => const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         ),
-      AuthStatus.unauthenticated => AuthPage(controller: widget.authController),
+      AuthStatus.unauthenticated => AuthPage(
+          controller: widget.authController,
+          serverSettings: widget.serverSettings,
+        ),
       AuthStatus.authenticated when profile == null => Scaffold(
           body: ErrorRetryView(
             message:
                 'Не удалось получить профиль. Проверьте соединение с сервером.',
             onRetry: widget.authController.restoreSession,
+            secondaryLabel:
+                widget.serverSettings == null ? null : 'Адрес сервера',
+            onSecondary: _changeServer,
           ),
         ),
       AuthStatus.authenticated when !profile!.onboardingCompleted =>
@@ -116,6 +136,7 @@ class _AuthGateState extends State<AuthGate> {
           key: ObjectKey(tracker),
           controller: tracker!,
           apiClient: widget.apiClient,
+          serverSettings: widget.serverSettings,
           diaryRepository: ApiDiaryRepository(widget.diaryApi),
           initialAction: _initialAction,
           userName: widget.authController.profile?.name,

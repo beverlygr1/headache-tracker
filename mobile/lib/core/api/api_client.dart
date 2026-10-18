@@ -47,6 +47,15 @@ class ApiClient {
   late final Dio _refreshDio;
   Future<bool>? _refreshing;
 
+  /// Адрес API, например `http://192.168.1.50:8000/api/v1`. Меняется на лету
+  /// из настроек приложения, без пересборки APK.
+  String get baseUrl => dio.options.baseUrl;
+
+  set baseUrl(String value) {
+    dio.options.baseUrl = value;
+    _refreshDio.options.baseUrl = value;
+  }
+
   static BaseOptions _baseOptions() {
     return BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
