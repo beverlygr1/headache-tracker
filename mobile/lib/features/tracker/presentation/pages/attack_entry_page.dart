@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../domain/attack_draft.dart';
 import '../../domain/attack_record.dart';
@@ -150,7 +151,9 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                               const SizedBox(height: 4),
                               Text(
                                 RussianDate.isSameDay(
-                                        _startTime, DateTime.now())
+                                  _startTime,
+                                  DateTime.now(),
+                                )
                                     ? 'Сегодня, ${RussianDate.time(_startTime)}'
                                     : '${RussianDate.dayMonth(_startTime)}, '
                                         '${RussianDate.time(_startTime)}',
@@ -204,10 +207,10 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                               ),
                             ),
                             const SizedBox(width: 7),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'из 10 · ощутимая боль',
-                                style: TextStyle(
+                                'из 10 · ${PainIntensity.description(_intensity).toLowerCase()}',
+                                style: const TextStyle(
                                   color: AppColors.muted,
                                   fontSize: 11,
                                 ),
@@ -236,8 +239,9 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 160),
                                 height: 7,
-                                margin:
-                                    EdgeInsets.only(right: index == 9 ? 0 : 5),
+                                margin: EdgeInsets.only(
+                                  right: index == 9 ? 0 : 5,
+                                ),
                                 decoration: BoxDecoration(
                                   color: active
                                       ? AppColors.blue
@@ -421,10 +425,8 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   }) async {
     final value = await showDialog<String>(
       context: context,
-      builder: (context) => _AddOptionDialog(
-        title: title,
-        maxLength: maxLength,
-      ),
+      builder: (context) =>
+          _AddOptionDialog(title: title, maxLength: maxLength),
     );
 
     if (value == null || value.isEmpty || !mounted) return;
@@ -476,9 +478,8 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     try {
       final selected = await Navigator.of(context).push<List<String>>(
         MaterialPageRoute(
-          builder: (context) => PainZonesPage(
-            initialZones: _painLocations.toList(),
-          ),
+          builder: (context) =>
+              PainZonesPage(initialZones: _painLocations.toList()),
         ),
       );
       if (selected == null || !mounted) return false;
@@ -564,20 +565,14 @@ class _AddOptionDialogState extends State<_AddOptionDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Отмена'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Добавить'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Добавить')),
       ],
     );
   }
 }
 
 class _IntensityButton extends StatelessWidget {
-  const _IntensityButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _IntensityButton({required this.icon, required this.onPressed});
 
   final IconData icon;
   final VoidCallback? onPressed;

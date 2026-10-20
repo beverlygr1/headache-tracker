@@ -27,7 +27,11 @@ class TokenStorage {
     await _storage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
-  Future<void> clear() {
-    return _storage.deleteAll();
+  Future<void> clear() async {
+    // Server settings share this storage and must survive logout/session expiry.
+    await Future.wait([
+      _storage.delete(key: _accessTokenKey),
+      _storage.delete(key: _refreshTokenKey),
+    ]);
   }
 }

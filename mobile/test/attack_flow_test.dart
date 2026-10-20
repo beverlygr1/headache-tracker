@@ -420,16 +420,8 @@ void _size(WidgetTester tester, [Size size = const Size(390, 844)]) {
 
 Future<void> _reveal(WidgetTester tester, Finder target) async {
   await tester.scrollUntilVisible(target, 180);
-  final height = tester.getSize(find.byType(Scaffold).last).height;
-  for (var i = 0; i < 8; i++) {
-    final y = tester.getCenter(target).dy;
-    if (y > 80 && y < height - 140) return;
-    await tester.drag(
-      find.byType(ListView),
-      Offset(0, y >= height - 140 ? -150 : 150),
-    );
-    await tester.pumpAndSettle();
-  }
+  await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
+  await tester.pumpAndSettle();
 }
 
 PrimaryActionButton _action(WidgetTester tester, String label) =>
