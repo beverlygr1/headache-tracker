@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../../diary/data/daily_entry.dart';
 import '../../domain/attack_record.dart';
@@ -157,10 +158,7 @@ class TodayPage extends StatelessWidget {
                     const SizedBox(height: 7),
                     const Text(
                       'Записывайте приступы и самочувствие. Личный прогноз появится на следующем этапе.',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        height: 1.45,
-                      ),
+                      style: TextStyle(color: AppColors.muted, height: 1.45),
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -234,12 +232,17 @@ class TodayPage extends StatelessWidget {
                         children: [
                       const Text('Не удалось загрузить дневник самочувствия'),
                       const SizedBox(height: 8),
-                      Text(diaryError!,
-                          style: const TextStyle(color: AppColors.muted)),
+                      Text(
+                        diaryError!,
+                        style: const TextStyle(color: AppColors.muted),
+                      ),
                       TextButton(
-                          onPressed: onRetryDiary,
-                          child: const Text('Повторить')),
-                    ])),
+                        onPressed: onRetryDiary,
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 14),
               ],
               if (latest == null)
@@ -248,15 +251,19 @@ class TodayPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                       Text(
-                          dailyEntries.isEmpty
-                              ? 'Здесь появится ваша первая запись'
-                              : 'Приступов пока нет',
-                          style: Theme.of(context).textTheme.titleMedium),
+                        dailyEntries.isEmpty
+                            ? 'Здесь появится ваша первая запись'
+                            : 'Приступов пока нет',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 8),
                       const Text(
-                          'Если боли нет, начните с самочувствия. Приступ можно записать, когда он возникнет.',
-                          style: TextStyle(color: AppColors.muted)),
-                    ])),
+                        'Если боли нет, начните с самочувствия. Приступ можно записать, когда он возникнет.',
+                        style: TextStyle(color: AppColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
               if (latest != null)
                 AppCard(
                   onTap: () => onOpenAttack(latest),
@@ -295,8 +302,8 @@ class TodayPage extends StatelessWidget {
                           Expanded(
                             child: Text(
                               latest.isActive
-                                  ? 'Ощутимая боль'
-                                  : 'Умеренная · ${latest.durationMinutes ?? 0} мин',
+                                  ? PainIntensity.description(latest.intensity)
+                                  : '${PainIntensity.description(latest.intensity)} · ${latest.durationMinutes ?? 0} мин',
                               style: const TextStyle(
                                 color: AppColors.muted,
                                 fontSize: 12,

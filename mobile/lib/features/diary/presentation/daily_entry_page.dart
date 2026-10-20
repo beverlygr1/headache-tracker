@@ -8,8 +8,11 @@ import '../data/daily_entry.dart';
 import '../data/diary_repository.dart';
 
 class DailyEntryPage extends StatefulWidget {
-  const DailyEntryPage(
-      {required this.repository, required this.date, super.key});
+  const DailyEntryPage({
+    required this.repository,
+    required this.date,
+    super.key,
+  });
   final DiaryRepository repository;
   final DateTime date;
 
@@ -85,16 +88,19 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
       _saving = true;
       _saveError = null;
     });
+    FocusManager.instance.primaryFocus?.unfocus();
     try {
-      final entry = await widget.repository.save(DailyEntry(
-        date: widget.date,
-        headachePresent: _headachePresent,
-        sleepHours: double.tryParse(_sleep.text.trim().replaceAll(',', '.')),
-        sleepQuality: _sleepQuality,
-        waterMl: int.tryParse(_water.text.trim()),
-        caffeineIntake: int.tryParse(_caffeine.text.trim()),
-        stressLevel: _stress,
-      ));
+      final entry = await widget.repository.save(
+        DailyEntry(
+          date: widget.date,
+          headachePresent: _headachePresent,
+          sleepHours: double.tryParse(_sleep.text.trim().replaceAll(',', '.')),
+          sleepQuality: _sleepQuality,
+          waterMl: int.tryParse(_water.text.trim()),
+          caffeineIntake: int.tryParse(_caffeine.text.trim()),
+          stressLevel: _stress,
+        ),
+      );
       if (mounted) Navigator.of(context).pop(entry);
     } catch (error) {
       if (mounted) setState(() => _saveError = describeError(error));
@@ -116,51 +122,66 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                 : Form(
                     key: _formKey,
                     child: ListView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                       children: [
-                        Text(RussianDate.dayMonth(widget.date),
-                            style: Theme.of(context).textTheme.headlineSmall),
+                        Text(
+                          RussianDate.dayMonth(widget.date),
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
                         const SizedBox(height: 10),
                         const Text(
-                            'Отмечайте и дни без боли. Можно заполнить только то, что помните.',
-                            style:
-                                TextStyle(color: AppColors.muted, height: 1.5)),
+                          'Отмечайте и дни без боли. Можно заполнить только то, что помните.',
+                          style: TextStyle(color: AppColors.muted, height: 1.5),
+                        ),
                         const SizedBox(height: 24),
                         AppCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const _FieldTitle(
+                              _FieldTitle(
                                 icon: Icons.favorite_border_rounded,
-                                title: 'Была ли сегодня головная боль?',
+                                title: RussianDate.isSameDay(
+                                  widget.date,
+                                  DateTime.now(),
+                                )
+                                    ? 'Была ли сегодня головная боль?'
+                                    : 'Была ли в этот день головная боль?',
                               ),
                               const SizedBox(height: 12),
-                              Wrap(spacing: 8, runSpacing: 8, children: [
-                                ChoiceChip(
-                                  key: const ValueKey('headache-yes'),
-                                  label: const Text('Да, была'),
-                                  selected: _headachePresent == true,
-                                  showCheckmark: false,
-                                  selectedColor: AppColors.blueSoft,
-                                  onSelected: _saving
-                                      ? null
-                                      : (selected) => setState(() =>
-                                          _headachePresent =
-                                              selected ? true : null),
-                                ),
-                                ChoiceChip(
-                                  key: const ValueKey('headache-no'),
-                                  label: const Text('Нет, не было'),
-                                  selected: _headachePresent == false,
-                                  showCheckmark: false,
-                                  selectedColor: AppColors.mint,
-                                  onSelected: _saving
-                                      ? null
-                                      : (selected) => setState(() =>
-                                          _headachePresent =
-                                              selected ? false : null),
-                                ),
-                              ]),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  ChoiceChip(
+                                    key: const ValueKey('headache-yes'),
+                                    label: const Text('Да, была'),
+                                    selected: _headachePresent == true,
+                                    showCheckmark: false,
+                                    selectedColor: AppColors.blueSoft,
+                                    onSelected: _saving
+                                        ? null
+                                        : (selected) => setState(
+                                              () => _headachePresent =
+                                                  selected ? true : null,
+                                            ),
+                                  ),
+                                  ChoiceChip(
+                                    key: const ValueKey('headache-no'),
+                                    label: const Text('Нет, не было'),
+                                    selected: _headachePresent == false,
+                                    showCheckmark: false,
+                                    selectedColor: AppColors.mint,
+                                    onSelected: _saving
+                                        ? null
+                                        : (selected) => setState(
+                                              () => _headachePresent =
+                                                  selected ? false : null,
+                                            ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -170,8 +191,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                               const _FieldTitle(
-                                  icon: Icons.bedtime_outlined,
-                                  title: 'Сколько вы спали?'),
+                                icon: Icons.bedtime_outlined,
+                                title: 'Сколько вы спали?',
+                              ),
                               const SizedBox(height: 12),
                               TextFormField(
                                 key: const ValueKey('sleep-hours-field'),
@@ -179,19 +201,25 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                 enabled: !_saving,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                textInputAction: TextInputAction.next,
+                                  decimal: true,
+                                ),
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => FocusManager
+                                    .instance.primaryFocus
+                                    ?.unfocus(),
                                 decoration: const InputDecoration(
-                                    labelText: 'Продолжительность сна',
-                                    hintText: 'Например, 7,5',
-                                    suffixText: 'часы',
-                                    border: OutlineInputBorder()),
+                                  labelText: 'Продолжительность сна',
+                                  hintText: 'Например, 7,5',
+                                  suffixText: 'часы',
+                                  border: OutlineInputBorder(),
+                                ),
                                 validator: (text) {
                                   if (text == null || text.trim().isEmpty) {
                                     return null;
                                   }
                                   final value = double.tryParse(
-                                      text.trim().replaceAll(',', '.'));
+                                    text.trim().replaceAll(',', '.'),
+                                  );
                                   return value == null ||
                                           !value.isFinite ||
                                           value < 0 ||
@@ -200,7 +228,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                       : null;
                                 },
                               ),
-                            ])),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         _RatingCard(
                           title: 'Как вы спали?',
@@ -218,8 +248,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                               const _FieldTitle(
-                                  icon: Icons.water_drop_outlined,
-                                  title: 'Сколько воды выпили?'),
+                                icon: Icons.water_drop_outlined,
+                                title: 'Сколько воды выпили?',
+                              ),
                               const SizedBox(height: 12),
                               TextFormField(
                                 key: const ValueKey('water-field'),
@@ -227,11 +258,15 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                 enabled: !_saving,
                                 keyboardType: TextInputType.number,
                                 textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => FocusManager
+                                    .instance.primaryFocus
+                                    ?.unfocus(),
                                 decoration: const InputDecoration(
-                                    labelText: 'Количество воды',
-                                    hintText: 'Например, 1500',
-                                    suffixText: 'мл',
-                                    border: OutlineInputBorder()),
+                                  labelText: 'Количество воды',
+                                  hintText: 'Например, 1500',
+                                  suffixText: 'мл',
+                                  border: OutlineInputBorder(),
+                                ),
                                 validator: (text) {
                                   if (text == null || text.trim().isEmpty) {
                                     return null;
@@ -244,27 +279,34 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                       : null;
                                 },
                               ),
-                            ])),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         AppCard(
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                               const _FieldTitle(
-                                  icon: Icons.coffee_outlined,
-                                  title: 'Сколько кофеина употребили?'),
+                                icon: Icons.coffee_outlined,
+                                title: 'Сколько кофеина употребили?',
+                              ),
                               const SizedBox(height: 12),
                               TextFormField(
                                 key: const ValueKey('caffeine-field'),
                                 controller: _caffeine,
                                 enabled: !_saving,
                                 keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.next,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => FocusManager
+                                    .instance.primaryFocus
+                                    ?.unfocus(),
                                 decoration: const InputDecoration(
-                                    labelText: 'Количество кофеина',
-                                    hintText: 'Например, 120',
-                                    suffixText: 'мг',
-                                    border: OutlineInputBorder()),
+                                  labelText: 'Количество кофеина',
+                                  hintText: 'Например, 120',
+                                  suffixText: 'мг',
+                                  border: OutlineInputBorder(),
+                                ),
                                 validator: (text) {
                                   if (text == null || text.trim().isEmpty) {
                                     return null;
@@ -277,7 +319,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                       : null;
                                 },
                               ),
-                            ])),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         _RatingCard(
                           title: 'Насколько напряжённым был день?',
@@ -290,34 +334,49 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                         ),
                         const SizedBox(height: 16),
                         const AppCard(
-                            color: AppColors.mint,
-                            child: Text(
-                                'Запись можно открыть и дополнить позже. '
-                                'Незаполненные пункты не считаются нулевыми значениями.')),
+                          color: AppColors.mint,
+                          child: Text(
+                            'Запись можно открыть и дополнить позже. '
+                            'Незаполненные пункты не считаются нулевыми значениями.',
+                          ),
+                        ),
                       ],
                     ),
                   ),
         bottomNavigationBar: _loading || _loadError != null
             ? null
-            : SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    if (_saveError != null) ...[
-                      Semantics(
-                          liveRegion: true,
-                          child: Text(_saveError!,
+            : Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_saveError != null) ...[
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              _saveError!,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error))),
-                      const SizedBox(height: 10),
-                    ],
-                    PrimaryActionButton(
-                        label:
-                            _saving ? 'Сохраняем…' : 'Сохранить самочувствие',
-                        onPressed: _saving ? null : _save),
-                  ]),
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        PrimaryActionButton(
+                          label:
+                              _saving ? 'Сохраняем…' : 'Сохранить самочувствие',
+                          onPressed: _saving ? null : _save,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
       ),
@@ -331,12 +390,15 @@ class _FieldTitle extends StatelessWidget {
   final String title;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Icon(icon, color: AppColors.blue, size: 22),
-        const SizedBox(width: 10),
-        Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
-      ]);
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, color: AppColors.blue, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ),
+        ],
+      );
 }
 
 class _RatingCard extends StatelessWidget {
@@ -365,23 +427,29 @@ class _RatingCard extends StatelessWidget {
           children: [
             _FieldTitle(icon: icon, title: title),
             const SizedBox(height: 8),
-            Text(hint,
-                style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+            Text(
+              hint,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
             const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (var level = 1; level <= 10; level++)
-                ChoiceChip(
-                  key: ValueKey('$keyPrefix-$level'),
-                  label: Text('$level'),
-                  selected: value == level,
-                  showCheckmark: false,
-                  selectedColor: AppColors.blueSoft,
-                  onSelected: enabled
-                      ? (selected) => onChanged(selected ? level : null)
-                      : null,
-                  tooltip: '$title: $level из 10',
-                ),
-            ]),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (var level = 1; level <= 10; level++)
+                  ChoiceChip(
+                    key: ValueKey('$keyPrefix-$level'),
+                    label: Text('$level'),
+                    selected: value == level,
+                    showCheckmark: false,
+                    selectedColor: AppColors.blueSoft,
+                    onSelected: enabled
+                        ? (selected) => onChanged(selected ? level : null)
+                        : null,
+                    tooltip: '$title: $level из 10',
+                  ),
+              ],
+            ),
           ],
         ),
       );

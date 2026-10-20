@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../../diary/data/daily_entry.dart';
 import '../../domain/attack_record.dart';
@@ -33,17 +34,48 @@ class DiaryPage extends StatefulWidget {
 
 class _DiaryPageState extends State<DiaryPage> {
   _DiaryFilter _filter = _DiaryFilter.all;
+  DateTime? _selectedDate;
+
+  Future<void> _chooseDate() async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? today,
+      firstDate: DateTime(1900),
+      lastDate: today,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      helpText: 'Выберите день дневника',
+      confirmText: 'Открыть',
+      cancelText: 'Отмена',
+    );
+    if (selected != null && mounted) {
+      setState(() => _selectedDate = DateUtils.dateOnly(selected));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final anchorDate = DateTime.now();
+    final today = DateUtils.dateOnly(DateTime.now());
+    final anchorDate = _selectedDate ?? today;
     final records = widget.controller.records.where((record) {
+      if (_selectedDate != null &&
+          !RussianDate.isSameDay(record.startTime, _selectedDate!)) {
+        return false;
+      }
       return switch (_filter) {
         _DiaryFilter.all => true,
         _DiaryFilter.active => record.isActive,
         _DiaryFilter.completed => !record.isActive,
       };
     }).toList();
+    final dailyEntries = widget.dailyEntries
+        .where(
+          (entry) =>
+              _selectedDate == null ||
+              RussianDate.isSameDay(entry.date, _selectedDate!),
+        )
+        .toList();
+    final hasActiveAttack = records.any((record) => record.isActive);
 
     return SafeArea(
       bottom: false,
@@ -70,34 +102,62 @@ class _DiaryPageState extends State<DiaryPage> {
             padding: const EdgeInsets.fromLTRB(15, 14, 15, 13),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        RussianDate.monthYear(anchorDate),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                TextButton(
+                  key: const ValueKey('diary-calendar-picker'),
+                  onPressed: _chooseDate,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.ink,
+                    padding: EdgeInsets.zero,
+                    alignment: Alignment.centerLeft,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          RussianDate.monthYear(anchorDate),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.muted,
-                    ),
-                  ],
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.muted,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 14),
                 _CalendarWeek(
-                  today: anchorDate,
+                  anchorDate: anchorDate,
+                  today: today,
+                  selectedDate: _selectedDate ?? today,
+                  onSelected: (date) => setState(() => _selectedDate = date),
                   records: widget.controller.records,
                   dailyEntries: widget.dailyEntries,
                 ),
               ],
             ),
           ),
+          if (_selectedDate != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${RussianDate.dayMonth(_selectedDate!)} ${_selectedDate!.year}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton(
+                  key: const ValueKey('diary-all-dates'),
+                  onPressed: () => setState(() => _selectedDate = null),
+                  child: const Text('Все даты'),
+                ),
+              ],
+            ),
           const SizedBox(height: 14),
-          if (widget.controller.activeAttack != null)
+          if (hasActiveAttack)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               decoration: BoxDecoration(
@@ -110,24 +170,22 @@ class _DiaryPageState extends State<DiaryPage> {
                   SizedBox(width: 10),
                   Text(
                     'Приступ сохранён в дневнике',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
             ),
-          if (widget.controller.activeAttack != null)
-            const SizedBox(height: 18),
+          if (hasActiveAttack) const SizedBox(height: 18),
           if (records.isEmpty)
             _EmptyDiary(
               filtered: _filter != _DiaryFilter.all,
-              hasDailyEntries: widget.dailyEntries.isNotEmpty,
-              onCreateDailyEntry: () => widget.onOpenDailyEntry(DateTime.now()),
+              hasDailyEntries: dailyEntries.isNotEmpty,
+              selectedDate: _selectedDate,
+              onCreateDailyEntry: () =>
+                  widget.onOpenDailyEntry(_selectedDate ?? today),
             )
           else
-            ..._buildRecordGroups(records, anchorDate),
+            ..._buildRecordGroups(records, today),
           if (widget.diaryError != null) ...[
             const SizedBox(height: 16),
             AppCard(
@@ -136,20 +194,26 @@ class _DiaryPageState extends State<DiaryPage> {
                     children: [
                   const Text('Не удалось загрузить самочувствие'),
                   const SizedBox(height: 8),
-                  Text(widget.diaryError!,
-                      style: const TextStyle(color: AppColors.muted)),
+                  Text(
+                    widget.diaryError!,
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
                   TextButton(
-                      onPressed: widget.onRetryDiary,
-                      child: const Text('Повторить')),
-                ])),
+                    onPressed: widget.onRetryDiary,
+                    child: const Text('Повторить'),
+                  ),
+                ],
+              ),
+            ),
           ],
-          if (_filter == _DiaryFilter.all &&
-              widget.dailyEntries.isNotEmpty) ...[
+          if (_filter == _DiaryFilter.all && dailyEntries.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Text('Самочувствие',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Самочувствие',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
-            for (final entry in widget.dailyEntries) ...[
+            for (final entry in dailyEntries) ...[
               AppCard(
                 onTap: () => widget.onOpenDailyEntry(entry.date),
                 child: Row(children: [
@@ -157,19 +221,29 @@ class _DiaryPageState extends State<DiaryPage> {
                   const SizedBox(width: 14),
                   Expanded(
                       child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Text(RussianDate.dayMonth(entry.date),
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 6),
-                        Text(entry.summary,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            RussianDate.dayMonth(entry.date),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            entry.summary,
                             style: const TextStyle(
-                                color: AppColors.muted, fontSize: 12)),
-                      ])),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.muted),
-                ]),
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.muted,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 10),
             ],
@@ -201,10 +275,7 @@ class _DiaryPageState extends State<DiaryPage> {
               RussianDate.isSameDay(recordDate, anchorDate)
                   ? 'Сегодня, ${RussianDate.dayMonth(recordDate)}'
                   : RussianDate.dayMonth(recordDate),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
           ),
         );
@@ -273,12 +344,18 @@ class _DiaryPageState extends State<DiaryPage> {
 
 class _CalendarWeek extends StatelessWidget {
   const _CalendarWeek({
+    required this.anchorDate,
     required this.today,
+    required this.selectedDate,
+    required this.onSelected,
     required this.records,
     required this.dailyEntries,
   });
 
   final DateTime today;
+  final DateTime anchorDate;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onSelected;
   final List<AttackRecord> records;
   final List<DailyEntry> dailyEntries;
 
@@ -286,61 +363,81 @@ class _CalendarWeek extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final monday =
-        DateTime(today.year, today.month, today.day - today.weekday + 1);
+    final monday = DateTime(
+      anchorDate.year,
+      anchorDate.month,
+      anchorDate.day - anchorDate.weekday + 1,
+    );
     return Row(
       children: List.generate(7, (index) {
         final date = DateTime(monday.year, monday.month, monday.day + index);
         final item = (weekday: _weekdays[index], day: date.day);
-        final selected = RussianDate.isSameDay(date, today);
+        final selected = RussianDate.isSameDay(date, selectedDate);
+        final enabled = !date.isAfter(today);
         final hasAttack = records.any(
           (record) => RussianDate.isSameDay(record.startTime, date),
         );
-        final hasDailyEntry = dailyEntries
-            .any((entry) => RussianDate.isSameDay(entry.date, date));
+        final hasDailyEntry = dailyEntries.any(
+          (entry) => RussianDate.isSameDay(entry.date, date),
+        );
         return Expanded(
-          child: Column(
-            children: [
-              Text(
-                item.weekday,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                width: 35,
-                height: 35,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.navy : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '${item.day}',
-                  style: TextStyle(
-                    color: selected ? Colors.white : AppColors.ink,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+          child: Semantics(
+            button: true,
+            selected: selected,
+            enabled: enabled,
+            label: '${RussianDate.dayMonth(date)} ${date.year}',
+            child: InkWell(
+              key: ValueKey('diary-day-${date.year}-${date.month}-${date.day}'),
+              onTap: enabled ? () => onSelected(date) : null,
+              borderRadius: BorderRadius.circular(18),
+              child: Column(
+                children: [
+                  Text(
+                    item.weekday,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 35,
+                    height: 35,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.navy : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${item.day}',
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white
+                            : enabled
+                                ? AppColors.ink
+                                : AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: hasAttack
+                          ? AppColors.blue
+                          : hasDailyEntry
+                              ? AppColors.teal
+                              : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: hasAttack
-                      ? AppColors.blue
-                      : hasDailyEntry
-                          ? AppColors.teal
-                          : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
+            ),
           ),
         );
       }),
@@ -349,10 +446,7 @@ class _CalendarWeek extends StatelessWidget {
 }
 
 class _AttackDiaryCard extends StatelessWidget {
-  const _AttackDiaryCard({
-    required this.record,
-    required this.onTap,
-  });
+  const _AttackDiaryCard({required this.record, required this.onTap});
 
   final AttackRecord record;
   final VoidCallback onTap;
@@ -381,21 +475,16 @@ class _AttackDiaryCard extends StatelessWidget {
               const SizedBox(width: 13),
               Expanded(
                 child: Text(
-                  record.isActive
-                      ? record.painLocation.isEmpty
-                          ? 'Приступ головной боли'
-                          : 'Боль в ${record.painLocation.toLowerCase()}'
-                      : 'Умеренная боль',
+                  record.isActive && record.painLocation.isNotEmpty
+                      ? '${PainIntensity.description(record.intensity)} · ${record.painLocation.toLowerCase()}'
+                      : PainIntensity.description(record.intensity),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.muted,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
             ],
           ),
           const SizedBox(height: 5),
@@ -405,11 +494,8 @@ class _AttackDiaryCard extends StatelessWidget {
                     '${record.symptoms.isEmpty ? 'без дополнительных симптомов' : record.symptoms.join(', ')}'
                 : '${RussianDate.time(record.startTime)}–'
                     '${RussianDate.time(record.endTime!)} · '
-                    '${record.durationMinutes ?? 0} минут',
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 10,
-            ),
+                    '${record.durationMinutes ?? 0} мин',
+            style: const TextStyle(color: AppColors.muted, fontSize: 10),
           ),
           if (record.isActive) ...[
             const SizedBox(height: 8),
@@ -425,12 +511,15 @@ class _AttackDiaryCard extends StatelessWidget {
 }
 
 class _EmptyDiary extends StatelessWidget {
-  const _EmptyDiary(
-      {required this.filtered,
-      required this.hasDailyEntries,
-      required this.onCreateDailyEntry});
+  const _EmptyDiary({
+    required this.filtered,
+    required this.hasDailyEntries,
+    this.selectedDate,
+    required this.onCreateDailyEntry,
+  });
   final bool filtered;
   final bool hasDailyEntries;
+  final DateTime? selectedDate;
   final VoidCallback onCreateDailyEntry;
 
   @override
@@ -438,26 +527,37 @@ class _EmptyDiary extends StatelessWidget {
     return AppCard(
       child: Column(
         children: [
-          const Icon(Icons.menu_book_outlined,
-              color: AppColors.muted, size: 34),
+          const Icon(
+            Icons.menu_book_outlined,
+            color: AppColors.muted,
+            size: 34,
+          ),
           const SizedBox(height: 12),
           Text(
             filtered
                 ? 'Под выбранный фильтр приступов нет'
-                : hasDailyEntries
-                    ? 'Приступов пока нет'
-                    : 'Дневник начинается с первой записи',
+                : selectedDate != null
+                    ? 'За этот день приступов нет'
+                    : hasDailyEntries
+                        ? 'Приступов пока нет'
+                        : 'Дневник начинается с первой записи',
             textAlign: TextAlign.center,
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           if (!filtered && !hasDailyEntries) ...[
             const SizedBox(height: 8),
-            const Text('Отмечайте самочувствие даже в дни без боли.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.muted)),
+            Text(
+              selectedDate == null
+                  ? 'Отмечайте самочувствие даже в дни без боли.'
+                  : 'Можно отметить самочувствие за выбранный день.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted),
+            ),
             const SizedBox(height: 16),
             PrimaryActionButton(
-                label: 'Отметить самочувствие', onPressed: onCreateDailyEntry),
+              label: 'Отметить самочувствие',
+              onPressed: onCreateDailyEntry,
+            ),
           ],
         ],
       ),

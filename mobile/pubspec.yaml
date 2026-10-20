@@ -1,7 +1,7 @@
 name: headache_tracker_app
 description: Flutter UI prototype for the Headache Tracker backend
 publish_to: "none"
-version: 0.2.0+1
+version: 0.2.1+2
 
 environment:
   sdk: ">=3.5.0 <4.0.0"

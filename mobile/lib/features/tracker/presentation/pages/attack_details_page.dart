@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
@@ -61,17 +62,18 @@ class AttackDetailsPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Expanded(
-                              child: Padding(
-                            padding: EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              'Ощутимая боль',
-                              style: TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 11,
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                PainIntensity.description(record.intensity),
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
-                          )),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 14),
@@ -80,7 +82,7 @@ class AttackDetailsPage extends StatelessWidget {
                             ? 'Начался ${RussianDate.isSameDay(record.startTime, DateTime.now()) ? 'сегодня' : RussianDate.dayMonth(record.startTime)} '
                                 'в ${RussianDate.time(record.startTime)}'
                             : 'Завершён в ${RussianDate.time(record.endTime!)} · '
-                                '${record.durationMinutes ?? 0} минут',
+                                '${record.durationMinutes ?? 0} мин',
                         style: const TextStyle(
                           color: AppColors.muted,
                           fontSize: 11,
@@ -179,10 +181,8 @@ class AttackDetailsPage extends StatelessWidget {
   Future<void> _openEditor(BuildContext context, AttackRecord record) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => AttackEntryPage(
-          controller: controller,
-          initialRecord: record,
-        ),
+        builder: (context) =>
+            AttackEntryPage(controller: controller, initialRecord: record),
       ),
     );
   }

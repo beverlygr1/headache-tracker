@@ -197,6 +197,10 @@ void main() {
     expect(find.byType(DiaryPage), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Без боли · Кофеин 120 мг'), 250,
         scrollable: find.byType(Scrollable).first);
+    await Scrollable.ensureVisible(
+        tester.element(find.text('Без боли · Кофеин 120 мг')),
+        alignment: 0.5);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Без боли · Кофеин 120 мг'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
