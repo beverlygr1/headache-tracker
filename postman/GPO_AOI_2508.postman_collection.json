@@ -687,16 +687,44 @@
               ]
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Forecast",
+      "description": "Run with the test account created by Auth. Uses the local diary date returned by the server; writes and clears caffeine for that test day.",
+      "item": [
         {
-          "name": "Forecast risk",
+          "name": "Forecast status and local date",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 501', () => pm.response.to.have.status(501));"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Forecast status and metadata', () => {",
+                  "  pm.expect(['ready', 'insufficient_data']).to.include(body.status);",
+                  "  pm.expect(body.calculated_at).to.match(/Z$/);",
+                  "  pm.expect(body.prediction_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "  pm.expect(body.time_zone).to.be.a('string');",
+                  "  pm.expect(body.horizon_days).to.eql(1);",
+                  "});",
+                  "pm.test('Probability follows status', () => {",
+                  "  if (body.status === 'ready') {",
+                  "    pm.expect(body.probability).to.be.a('number').and.within(0, 1);",
+                  "    pm.expect(body.risk_level).to.be.a('string');",
+                  "    pm.expect(body.missing_fields).to.eql([]);",
+                  "  } else {",
+                  "    pm.expect(body.probability).to.eql(null);",
+                  "    pm.expect(body.risk_level).to.eql(null);",
+                  "    pm.expect(body.missing_fields.length).to.be.above(0);",
+                  "  }",
+                  "});",
+                  "const day = new Date(body.prediction_date + 'T00:00:00Z');",
+                  "day.setUTCDate(day.getUTCDate() - 1);",
+                  "pm.collectionVariables.set('forecastDiaryDate', day.toISOString().slice(0, 10));"
                 ]
               }
             }
@@ -719,6 +747,171 @@
                 "risk"
               ]
             }
+          }
+        },
+        {
+          "name": "Fill current model inputs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Diary saved', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/diary/{{forecastDiaryDate}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sleep_hours\": 7.5,\n  \"stress_level\": 4,\n  \"caffeine_intake\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ready forecast",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Forecast status and metadata', () => {",
+                  "  pm.expect(['ready', 'insufficient_data']).to.include(body.status);",
+                  "  pm.expect(body.calculated_at).to.match(/Z$/);",
+                  "  pm.expect(body.prediction_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "  pm.expect(body.time_zone).to.be.a('string');",
+                  "  pm.expect(body.horizon_days).to.eql(1);",
+                  "});",
+                  "pm.test('Probability follows status', () => {",
+                  "  if (body.status === 'ready') {",
+                  "    pm.expect(body.probability).to.be.a('number').and.within(0, 1);",
+                  "    pm.expect(body.risk_level).to.be.a('string');",
+                  "    pm.expect(body.missing_fields).to.eql([]);",
+                  "  } else {",
+                  "    pm.expect(body.probability).to.eql(null);",
+                  "    pm.expect(body.risk_level).to.eql(null);",
+                  "    pm.expect(body.missing_fields.length).to.be.above(0);",
+                  "  }",
+                  "});",
+                  "pm.test('Ready after filling inputs', () => pm.expect(body.status).to.eql('ready'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/forecast/risk"
+          }
+        },
+        {
+          "name": "Clear current caffeine input",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Diary saved', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/diary/{{forecastDiaryDate}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caffeine_intake\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Insufficient data without caffeine",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Forecast status and metadata', () => {",
+                  "  pm.expect(['ready', 'insufficient_data']).to.include(body.status);",
+                  "  pm.expect(body.calculated_at).to.match(/Z$/);",
+                  "  pm.expect(body.prediction_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "  pm.expect(body.time_zone).to.be.a('string');",
+                  "  pm.expect(body.horizon_days).to.eql(1);",
+                  "});",
+                  "pm.test('Probability follows status', () => {",
+                  "  if (body.status === 'ready') {",
+                  "    pm.expect(body.probability).to.be.a('number').and.within(0, 1);",
+                  "    pm.expect(body.risk_level).to.be.a('string');",
+                  "    pm.expect(body.missing_fields).to.eql([]);",
+                  "  } else {",
+                  "    pm.expect(body.probability).to.eql(null);",
+                  "    pm.expect(body.risk_level).to.eql(null);",
+                  "    pm.expect(body.missing_fields.length).to.be.above(0);",
+                  "  }",
+                  "});",
+                  "pm.test('Missing caffeine has no probability', () => {",
+                  "  pm.expect(body.status).to.eql('insufficient_data');",
+                  "  pm.expect(body.missing_fields).to.eql(['caffeine_intake']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/forecast/risk"
           }
         }
       ]

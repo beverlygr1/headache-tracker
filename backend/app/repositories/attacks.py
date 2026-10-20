@@ -28,13 +28,22 @@ def get_attack(db: Session, user_id: int, attack_id: int) -> Attack | None:
     ).scalar_one_or_none()
 
 
-def list_attacks(db: Session, user_id: int, from_date: date | None, to_date: date | None, limit: int, offset: int) -> list[Attack]:
+def list_attacks(
+    db: Session,
+    user_id: int,
+    from_date: date | None,
+    to_date: date | None,
+    limit: int,
+    offset: int,
+) -> list[Attack]:
     stmt = select(Attack).where(Attack.user_id == user_id)
     if from_date is not None:
         stmt = stmt.where(Attack.start_time >= _day_start(from_date))
     if to_date is not None:
         stmt = stmt.where(Attack.start_time < _next_day_start(to_date))
-    result = db.execute(stmt.order_by(Attack.start_time.desc()).limit(limit).offset(offset))
+    result = db.execute(
+        stmt.order_by(Attack.start_time.desc()).limit(limit).offset(offset)
+    )
     return list(result.scalars().all())
 
 
@@ -51,5 +60,10 @@ def delete_attack(db: Session, attack: Attack) -> None:
     db.commit()
 
 
-def list_start_times(db: Session, user_id: int) -> list[datetime]:
-    return list(db.execute(select(Attack.start_time).where(Attack.user_id == user_id)).scalars().all())
+def list_start_times(
+    db: Session, user_id: int, *, until: datetime | None = None
+) -> list[datetime]:
+    stmt = select(Attack.start_time).where(Attack.user_id == user_id)
+    if until is not None:
+        stmt = stmt.where(Attack.start_time <= until)
+    return list(db.execute(stmt).scalars().all())

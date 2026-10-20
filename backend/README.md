@@ -32,7 +32,15 @@ FastAPI + PostgreSQL backend для проекта ГПО АОИ-2508.
 Новая миграция для этих экранов не нужна. Сохранение, повторное чтение,
 редактирование и доступ к записям проверяются в `tests/test_pain_zones.py`.
 
-`/analytics/triggers`, PDF-экспорт и `/forecast/risk` намеренно отвечают `501 Not Implemented`: для них пока нет достоверной реализации.
+`/analytics/triggers` и PDF-экспорт намеренно отвечают `501 Not Implemented`.
+
+`GET /api/v1/forecast/risk` работает: `status=ready` с вероятностью либо
+`status=insufficient_data` с `probability=null` и недостающими полями сегодняшнего
+дневника (сон, стресс, кофеин). Ответ содержит `calculated_at`, `prediction_date`,
+`time_zone` и `horizon_days=1`. При ошибке модели — `503`; остальные разделы
+продолжают работать, модель загружается при первом достаточном запросе.
+Подробный контракт: [../docs/FORECAST_API.md](../docs/FORECAST_API.md).
+Для этого обновления не нужна новая миграция БД.
 
 ## Локальный запуск без Docker
 
