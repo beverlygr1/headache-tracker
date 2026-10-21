@@ -8,6 +8,7 @@ import '../features/auth/state/auth_controller.dart';
 import '../features/diary/data/diary_api.dart';
 import '../features/diary/data/diary_repository.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
+import '../features/reminders/state/reminder_controller.dart';
 import '../features/settings/presentation/server_address_dialog.dart';
 import '../features/tracker/data/attack_repository.dart';
 import '../features/tracker/presentation/app_shell.dart';
@@ -22,6 +23,7 @@ class AuthGate extends StatefulWidget {
     required this.diaryApi,
     this.apiClient,
     this.serverSettings,
+    this.reminderController,
     super.key,
   });
 
@@ -32,6 +34,9 @@ class AuthGate extends StatefulWidget {
 
   /// Адрес сервера, который можно поменять в приложении. `null` в тестах.
   final ServerSettings? serverSettings;
+
+  /// Ежедневное напоминание о дневнике. `null` в тестах.
+  final ReminderController? reminderController;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -137,6 +142,7 @@ class _AuthGateState extends State<AuthGate> {
           controller: tracker!,
           apiClient: widget.apiClient,
           serverSettings: widget.serverSettings,
+          reminderController: widget.reminderController,
           diaryRepository: ApiDiaryRepository(widget.diaryApi),
           initialAction: _initialAction,
           userName: widget.authController.profile?.name,
