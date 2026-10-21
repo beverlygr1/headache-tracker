@@ -11,6 +11,9 @@ import 'features/auth/state/auth_controller.dart';
 import 'features/diary/data/diary_api.dart';
 import 'features/onboarding/presentation/onboarding_demo.dart';
 import 'features/profile/data/profile_api.dart';
+import 'features/reminders/data/reminder_scheduler.dart';
+import 'features/reminders/data/reminder_settings.dart';
+import 'features/reminders/state/reminder_controller.dart';
 import 'features/tracker/presentation/app_shell.dart';
 import 'features/tracker/state/tracker_controller.dart';
 
@@ -21,8 +24,21 @@ Future<void> main() async {
 
 Future<Widget> _buildHome() async {
   if (AppConfig.onboardingDemo) return const OnboardingDemo();
+
+  final scheduler = LocalNotificationReminderScheduler();
+  final reminders = ReminderController(
+    scheduler: scheduler.isSupported
+        ? scheduler
+        : const UnsupportedReminderScheduler(),
+    store: SecureReminderSettingsStore(),
+  );
+  await reminders.load();
+
   if (AppConfig.demoMode) {
-    return AppShell(controller: TrackerController.demo());
+    return AppShell(
+      controller: TrackerController.demo(),
+      reminderController: reminders,
+    );
   }
 
   final client = ApiClient();
@@ -38,6 +54,7 @@ Future<Widget> _buildHome() async {
     authController: authController,
     apiClient: client,
     serverSettings: serverSettings,
+    reminderController: reminders,
     attacksApi: AttacksApi(client),
     diaryApi: DiaryApi(client),
   );

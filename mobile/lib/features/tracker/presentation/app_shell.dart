@@ -11,6 +11,8 @@ import '../../diary/data/daily_entry.dart';
 import '../../diary/data/diary_repository.dart';
 import '../../diary/presentation/daily_entry_page.dart';
 import '../../onboarding/presentation/onboarding_page.dart';
+import '../../reminders/presentation/reminder_settings_page.dart';
+import '../../reminders/state/reminder_controller.dart';
 import '../../settings/presentation/server_address_dialog.dart';
 import '../domain/attack_record.dart';
 import '../state/tracker_controller.dart';
@@ -29,6 +31,7 @@ class AppShell extends StatefulWidget {
     this.diaryRepository,
     this.apiClient,
     this.serverSettings,
+    this.reminderController,
     this.analyticsController,
     this.initialAction = OnboardingAction.today,
     super.key,
@@ -44,6 +47,9 @@ class AppShell extends StatefulWidget {
 
   /// Адрес сервера, который можно поменять из профиля. `null` в демо-режиме.
   final ServerSettings? serverSettings;
+
+  /// Ежедневное напоминание о дневнике. `null` в тестах.
+  final ReminderController? reminderController;
 
   /// `null` в демо-режиме: выходить не из чего.
   final Future<void> Function()? onLogout;
@@ -72,11 +78,13 @@ class _AppShellState extends State<AppShell> {
       _analyticsController = AnalyticsController(AnalyticsApi(widget.apiClient!));
     }
 
+    widget.reminderController?.addListener(_onReminderChanged);
     _initialize();
   }
 
   @override
   void dispose() {
+    widget.reminderController?.removeListener(_onReminderChanged);
     // Освобождаем контроллер аналитики только если создавали его внутри
     if (widget.analyticsController == null) {
       _analyticsController?.dispose();
@@ -98,9 +106,27 @@ class _AppShellState extends State<AppShell> {
   void _openInitialAction() {
     if (_openedInitialAction) return;
     _openedInitialAction = true;
+    // Приложение открыли нажатием на напоминание — сразу к записи дня.
+    final action = widget.reminderController?.takeOpenDiaryRequest() == true
+        ? OnboardingAction.diary
+        : widget.initialAction;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _performAction(widget.initialAction);
+      if (mounted) _performAction(action);
     });
+  }
+
+  /// Нажатие на напоминание, пока приложение уже открыто.
+  void _onReminderChanged() {
+    final reminders = widget.reminderController;
+    if (reminders == null || !reminders.hasOpenDiaryRequest) return;
+    // До первой загрузки запрос заберёт _openInitialAction.
+    if (!_openedInitialAction ||
+        widget.controller.status != TrackerStatus.ready) {
+      return;
+    }
+    reminders.takeOpenDiaryRequest();
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    _performAction(OnboardingAction.diary);
   }
 
   Future<void> _loadDiary() async {
@@ -204,6 +230,16 @@ class _AppShellState extends State<AppShell> {
                     Navigator.pop(context, _ProfileAction.onboarding),
               ),
               const SizedBox(height: 12),
+              if (widget.reminderController case final reminders?) ...[
+                SecondaryActionButton(
+                  label: reminders.settings.enabled
+                      ? 'Напоминание о дневнике: ${reminders.settings.timeLabel}'
+                      : 'Напоминание о дневнике: выкл.',
+                  onPressed: () =>
+                      Navigator.pop(context, _ProfileAction.reminder),
+                ),
+                const SizedBox(height: 12),
+              ],
               if (widget.serverSettings case final settings?) ...[
                 SecondaryActionButton(
                   label: 'Адрес сервера: ${settings.displayAddress}',
@@ -231,6 +267,17 @@ class _AppShellState extends State<AppShell> {
     if (action == _ProfileAction.logout) await onLogout?.call();
     if (action == _ProfileAction.onboarding) await _showOnboarding();
     if (action == _ProfileAction.server) await _changeServer();
+    if (action == _ProfileAction.reminder) await _openReminderSettings();
+  }
+
+  Future<void> _openReminderSettings() async {
+    final reminders = widget.reminderController;
+    if (reminders == null) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => ReminderSettingsPage(controller: reminders),
+      ),
+    );
   }
 
   Future<void> _changeServer() async {
@@ -369,4 +416,4 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-enum _ProfileAction { onboarding, server, logout }
+enum _ProfileAction { onboarding, reminder, server, logout }
