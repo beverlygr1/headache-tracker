@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -14,6 +14,8 @@ class UserProfileResponse(BaseModel):
     birth_date: date | None = None
     onboarding_step: int = 0
     onboarding_completed: bool = False
+    # null — фото нет; иначе время последней замены (клиент сбрасывает кэш).
+    avatar_updated_at: datetime | None = None
 
 
 class UserProfileUpdateRequest(BaseModel):

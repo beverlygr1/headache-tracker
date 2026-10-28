@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
@@ -6,6 +8,7 @@ import '../../../../core/utils/russian_date.dart';
 import '../../../diary/data/daily_entry.dart';
 import '../../../forecast/presentation/forecast_card.dart';
 import '../../../forecast/state/forecast_controller.dart';
+import '../../../profile/presentation/profile_avatar.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
@@ -23,6 +26,7 @@ class TodayPage extends StatelessWidget {
     this.diaryError,
     this.onRetryDiary,
     this.userName,
+    this.avatar,
     super.key,
   });
 
@@ -30,6 +34,9 @@ class TodayPage extends StatelessWidget {
   final DateTime? today;
   final ForecastController? forecastController;
   final String? userName;
+
+  /// Фото профиля; без него показывается буква имени.
+  final Uint8List? avatar;
   final VoidCallback onProfileTap;
   final VoidCallback onCreateAttack;
   final ValueChanged<AttackRecord> onOpenAttack;
@@ -41,7 +48,6 @@ class TodayPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = this.today ?? DateTime.now();
-    final name = userName?.trim() ?? '';
     final latest = controller.latestAttack;
     DailyEntry? todayEntry;
     for (final entry in dailyEntries) {
@@ -107,24 +113,10 @@ class TodayPage extends StatelessWidget {
                     child: InkWell(
                       onTap: onProfileTap,
                       customBorder: const CircleBorder(),
-                      child: SizedBox(
-                        width: 62,
-                        height: 62,
-                        child: Center(
-                          child: name.isEmpty
-                              ? const Icon(
-                                  Icons.person_outline_rounded,
-                                  color: AppColors.ink,
-                                )
-                              : Text(
-                                  name.characters.first.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: AppColors.ink,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                        ),
+                      child: ProfileAvatar(
+                        key: const ValueKey('today-avatar'),
+                        name: userName,
+                        photo: avatar,
                       ),
                     ),
                   ),

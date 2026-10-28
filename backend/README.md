@@ -42,6 +42,20 @@ FastAPI + PostgreSQL backend для проекта ГПО АОИ-2508.
 Подробный контракт: [../docs/FORECAST_API.md](../docs/FORECAST_API.md).
 Для этого обновления не нужна новая миграция БД.
 
+## Фото и личные данные профиля
+
+- `PUT /api/v1/user/avatar` — multipart-поле `file`, JPEG/PNG/WebP до 2 МБ;
+  тип проверяется по содержимому файла. Ответ — профиль.
+- `GET /api/v1/user/avatar` — байты фото владельца токена (404 — фото нет).
+- `DELETE /api/v1/user/avatar` — удалить фото.
+- `GET /api/v1/user/profile` возвращает `avatar_updated_at` (`null` — фото нет).
+- `PUT /api/v1/user/profile` принимает `birth_date`, `gender`, `time_zone`;
+  явный `null` очищает поле.
+
+Фото хранится в таблице `user_avatars` (миграция `0007_user_avatars`),
+поэтому после обновления выполните `alembic upgrade head` (Docker Compose
+делает это при старте).
+
 ## Локальный запуск без Docker
 
 При обновлении существующей БД также выполните `alembic upgrade head`.

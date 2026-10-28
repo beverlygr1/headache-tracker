@@ -18,6 +18,7 @@ import '../../diary/presentation/daily_entry_page.dart';
 import '../../forecast/data/forecast_api.dart';
 import '../../forecast/state/forecast_controller.dart';
 import '../../onboarding/presentation/onboarding_page.dart';
+import '../../profile/presentation/profile_avatar.dart';
 import '../../reminders/presentation/reminder_settings_page.dart';
 import '../../reminders/state/reminder_controller.dart';
 import '../../settings/presentation/server_address_dialog.dart';
@@ -272,17 +273,34 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.userName ?? 'Профиль',
-                style: Theme.of(context).textTheme.titleLarge,
+              Row(
+                children: [
+                  ProfileAvatar(
+                    name: widget.userName,
+                    photo: widget.authController?.avatar,
+                    size: 52,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.userName ?? 'Профиль',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (widget.userEmail != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.userEmail!,
+                            style: const TextStyle(color: AppColors.muted),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              if (widget.userEmail != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  widget.userEmail!,
-                  style: const TextStyle(color: AppColors.muted),
-                ),
-              ],
               const SizedBox(height: 20),
               if (widget.authController != null) ...[
                 SecondaryActionButton(
@@ -440,6 +458,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 forecastController: _forecastController,
                 controller: widget.controller,
                 userName: widget.userName,
+                avatar: widget.authController?.avatar,
                 onProfileTap: _openProfile,
                 onCreateAttack: () =>
                     _openEditor(widget.controller.activeAttack),

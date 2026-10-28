@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import Boolean, CheckConstraint, Date, Integer, String, false, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,3 +37,10 @@ class User(TimestampMixin, Base):
     diary_entries = relationship(
         "DiaryEntry", back_populates="user", cascade="all, delete-orphan"
     )
+    avatar = relationship(
+        "UserAvatar", uselist=False, cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    @property
+    def avatar_updated_at(self) -> datetime | None:
+        return self.avatar.updated_at if self.avatar is not None else None
