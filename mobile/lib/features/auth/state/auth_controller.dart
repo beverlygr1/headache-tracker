@@ -13,15 +13,21 @@ class AuthController extends ChangeNotifier {
     required ApiClient client,
     required AuthApi authApi,
     required ProfileApi profileApi,
+    Future<String?> Function()? deviceTimeZone,
   })  : _client = client,
         _authApi = authApi,
-        _profileApi = profileApi {
+        _profileApi = profileApi,
+        _deviceTimeZone = deviceTimeZone {
     _client.onSessionExpired = _onSessionExpired;
   }
 
   final ApiClient _client;
   final AuthApi _authApi;
   final ProfileApi _profileApi;
+
+  /// IANA-пояс телефона. Нужен аналитике и прогнозу: без пояса в профиле
+  /// сервер считает дни по UTC, и ночные приступы уходят на соседний день.
+  final Future<String?> Function()? _deviceTimeZone;
 
   AuthStatus _status = AuthStatus.unknown;
   UserProfile? _profile;
@@ -64,7 +70,7 @@ class AuthController extends ChangeNotifier {
         return;
       }
 
-      _profile = await _profileApi.getProfile();
+      _profile = await _fillTimeZone(await _profileApi.getProfile());
       _setStatus(AuthStatus.authenticated);
       _loadAvatar();
     } on ApiException catch (error) {
@@ -145,6 +151,24 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Один раз записывает пояс телефона, если в профиле его нет. Заданный
+  /// пользователем пояс не меняется; любая ошибка не мешает входу.
+  Future<UserProfile> _fillTimeZone(UserProfile profile) async {
+    final detect = _deviceTimeZone;
+    if (detect == null || (profile.timeZone?.isNotEmpty ?? false)) {
+      return profile;
+    }
+    try {
+      final zone = await detect().timeout(const Duration(seconds: 3));
+      if (zone == null || zone.isEmpty) return profile;
+      return await _profileApi
+          .updateProfile(timeZone: zone)
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      return profile;
+    }
+  }
+
   /// Подгружает фото, не задерживая вход: без него приложение работает.
   Future<void> _loadAvatar() async {
     final profile = _profile;
@@ -199,7 +223,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
     try {
       await action();
-      _profile = await _profileApi.getProfile();
+      _profile = await _fillTimeZone(await _profileApi.getProfile());
       _avatar = null;
       _status = AuthStatus.authenticated;
     } finally {

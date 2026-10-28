@@ -1,5 +1,5 @@
 from app.models.attack import Attack
-from app.models.avatar import UserAvatar
+from app.models.avatar import UserAvatar  # noqa: F401 — регистрирует таблицу
 from app.models.diary import DiaryEntry
 from app.models.user import User
 from app.models.new_features import UserMedication, UserSetting, UserSupplement

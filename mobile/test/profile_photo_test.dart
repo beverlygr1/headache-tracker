@@ -108,6 +108,31 @@ void main() {
     expect(server.auth.avatar, _png);
   });
 
+  group('phone time zone', () {
+    test('fills an empty profile time zone on sign-in', () async {
+      final server = _Server(deviceTimeZone: () async => 'Asia/Tomsk');
+      await server.auth.restoreSession();
+      expect(server.auth.profile!.timeZone, 'Asia/Tomsk');
+      expect(server.profile['time_zone'], 'Asia/Tomsk');
+    });
+
+    test('keeps a time zone the user already chose', () async {
+      final server = _Server(deviceTimeZone: () async => 'Asia/Tomsk')
+        ..profile['time_zone'] = 'Europe/Moscow';
+      await server.auth.restoreSession();
+      expect(server.auth.profile!.timeZone, 'Europe/Moscow');
+      expect(server.timeZoneUpdates, 0);
+    });
+
+    test('detection failure does not block sign-in', () async {
+      final server =
+          _Server(deviceTimeZone: () async => throw StateError('no zone'));
+      await server.auth.restoreSession();
+      expect(server.auth.status, AuthStatus.authenticated);
+      expect(server.auth.profile!.timeZone, isNull);
+    });
+  });
+
   testWidgets('photo is added from gallery, replaced and deleted',
       (tester) async {
     _phone(tester);
@@ -228,14 +253,17 @@ void _phone(WidgetTester tester) {
 }
 
 class _Server {
-  _Server() {
+  _Server({Future<String?> Function()? deviceTimeZone}) {
     final client = ApiClient(tokenStorage: _Tokens());
     auth = AuthController(
       client: client,
       authApi: AuthApi(client),
       profileApi: _FakeProfileApi(client, this),
+      deviceTimeZone: deviceTimeZone,
     );
   }
+
+  int timeZoneUpdates = 0;
 
   late final AuthController auth;
   final profile = <String, dynamic>{
@@ -262,6 +290,20 @@ class _FakeProfileApi extends ProfileApi {
 
   @override
   Future<UserProfile> getProfile() async => server.snapshot();
+
+  @override
+  Future<UserProfile> updateProfile({
+    String? name,
+    String? timeZone,
+    String? gender,
+    DateTime? birthDate,
+  }) async {
+    if (timeZone != null) {
+      server.timeZoneUpdates++;
+      server.profile['time_zone'] = timeZone;
+    }
+    return server.snapshot();
+  }
 
   @override
   Future<Uint8List?> fetchAvatar() async => server.avatar;
