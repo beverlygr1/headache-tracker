@@ -23,8 +23,8 @@ class DailyEntryPage extends StatefulWidget {
 class _DailyEntryPageState extends State<DailyEntryPage> {
   final _formKey = GlobalKey<FormState>();
   final _sleep = TextEditingController();
-  final _water = TextEditingController();
-  final _caffeine = TextEditingController();
+  int? _waterMl;
+  int? _caffeineMg;
   bool? _headachePresent;
   int? _sleepQuality;
   int? _stress;
@@ -43,8 +43,6 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
   @override
   void dispose() {
     _sleep.dispose();
-    _water.dispose();
-    _caffeine.dispose();
     super.dispose();
   }
 
@@ -60,8 +58,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
       _sleep.text = entry?.sleepHours == null
           ? ''
           : DailyEntry.formatHours(entry!.sleepHours!);
-      _water.text = entry?.waterMl?.toString() ?? '';
-      _caffeine.text = entry?.caffeineIntake?.toString() ?? '';
+      _waterMl = entry?.waterMl;
+      _caffeineMg = entry?.caffeineIntake;
       _headachePresent = entry?.headachePresent;
       _sleepQuality = entry?.sleepQuality;
       _stress = entry?.stressLevel;
@@ -76,8 +74,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
     if (_saving || !_formKey.currentState!.validate()) return;
     if (!_hasExistingEntry &&
         _sleep.text.trim().isEmpty &&
-        _water.text.trim().isEmpty &&
-        _caffeine.text.trim().isEmpty &&
+        _waterMl == null &&
+        _caffeineMg == null &&
         _headachePresent == null &&
         _sleepQuality == null &&
         _stress == null) {
@@ -96,8 +94,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
           headachePresent: _headachePresent,
           sleepHours: double.tryParse(_sleep.text.trim().replaceAll(',', '.')),
           sleepQuality: _sleepQuality,
-          waterMl: int.tryParse(_water.text.trim()),
-          caffeineIntake: int.tryParse(_caffeine.text.trim()),
+          waterMl: _waterMl,
+          caffeineIntake: _caffeineMg,
           stressLevel: _stress,
         ),
       );
@@ -243,84 +241,14 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                               setState(() => _sleepQuality = value),
                         ),
                         const SizedBox(height: 16),
-                        AppCard(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              const _FieldTitle(
-                                icon: Icons.water_drop_outlined,
-                                title: 'Сколько воды выпили?',
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                key: const ValueKey('water-field'),
-                                controller: _water,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) => FocusManager
-                                    .instance.primaryFocus
-                                    ?.unfocus(),
-                                decoration: const InputDecoration(
-                                  labelText: 'Количество воды',
-                                  hintText: 'Например, 1500',
-                                  suffixText: 'мл',
-                                  border: OutlineInputBorder(),
-                                ),
-                                validator: (text) {
-                                  if (text == null || text.trim().isEmpty) {
-                                    return null;
-                                  }
-                                  final value = int.tryParse(text.trim());
-                                  return value == null ||
-                                          value < 0 ||
-                                          value > 2147483647
-                                      ? 'Введите целое неотрицательное число'
-                                      : null;
-                                },
-                              ),
-                            ],
-                          ),
+                        WaterTrackerCard(
+                          waterMl: _waterMl ?? 0,
+                          onChanged: (val) => setState(() => _waterMl = val),
                         ),
                         const SizedBox(height: 16),
-                        AppCard(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              const _FieldTitle(
-                                icon: Icons.coffee_outlined,
-                                title: 'Сколько кофеина употребили?',
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                key: const ValueKey('caffeine-field'),
-                                controller: _caffeine,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) => FocusManager
-                                    .instance.primaryFocus
-                                    ?.unfocus(),
-                                decoration: const InputDecoration(
-                                  labelText: 'Количество кофеина',
-                                  hintText: 'Например, 120',
-                                  suffixText: 'мг',
-                                  border: OutlineInputBorder(),
-                                ),
-                                validator: (text) {
-                                  if (text == null || text.trim().isEmpty) {
-                                    return null;
-                                  }
-                                  final value = int.tryParse(text.trim());
-                                  return value == null ||
-                                          value < 0 ||
-                                          value > 2147483647
-                                      ? 'Введите целое неотрицательное число'
-                                      : null;
-                                },
-                              ),
-                            ],
-                          ),
+                        CaffeineTrackerCard(
+                          caffeineMg: _caffeineMg ?? 0,
+                          onChanged: (val) => setState(() => _caffeineMg = val),
                         ),
                         const SizedBox(height: 16),
                         _RatingCard(
@@ -453,4 +381,177 @@ class _RatingCard extends StatelessWidget {
           ],
         ),
       );
+}
+
+class WaterTrackerCard extends StatelessWidget {
+  final int waterMl;
+  final ValueChanged<int> onChanged;
+
+  const WaterTrackerCard({
+    super.key,
+    required this.waterMl,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final glasses = (waterMl / 250).round();
+
+    return Card(
+      elevation: 0,
+      color: Colors.blue.shade50.withOpacity(0.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.water_drop_rounded, color: Colors.blue),
+                SizedBox(width: 8),
+                Text(
+                  'Сколько воды выпили?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$waterMl мл',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                    ),
+                    Text(
+                      '$glasses ${glasses == 1 ? "стакан" : (glasses >= 2 && glasses <= 4) ? "стакана" : "стаканов"}',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: waterMl >= 250 ? () => onChanged(waterMl - 250) : null,
+                      icon: const Icon(Icons.remove),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: () => onChanged(waterMl + 250),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [500, 1000, 1500, 2000].map((preset) {
+                final isSelected = waterMl == preset;
+                return ChoiceChip(
+                  label: Text('$preset мл'),
+                  selected: isSelected,
+                  onSelected: (_) => onChanged(preset),
+                  selectedColor: Colors.blue.shade200,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CaffeineTrackerCard extends StatelessWidget {
+  final int caffeineMg;
+  final ValueChanged<int> onChanged;
+
+  const CaffeineTrackerCard({
+    super.key,
+    required this.caffeineMg,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cups = (caffeineMg / 100).round();
+
+    return Card(
+      elevation: 0,
+      color: Colors.orange.shade50.withOpacity(0.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.coffee_rounded, color: Colors.brown),
+                SizedBox(width: 8),
+                Text(
+                  'Сколько кофеина употребили?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$cups ${cups == 1 ? "чашка" : (cups >= 2 && cups <= 4) ? "чашки" : "чашек"}',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.brown),
+                    ),
+                    Text(
+                      '~$caffeineMg мг кофеина',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: caffeineMg >= 100 ? () => onChanged(caffeineMg - 100) : null,
+                      icon: const Icon(Icons.remove),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: () => onChanged(caffeineMg + 100),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [0, 100, 200, 300].map((mg) {
+                final c = (mg / 100).round();
+                final isSelected = caffeineMg == mg;
+                return ChoiceChip(
+                  label: Text(mg == 0 ? 'Не пил' : '$c ${c == 1 ? "чашка" : "чашки"}'),
+                  selected: isSelected,
+                  onSelected: (_) => onChanged(mg),
+                  selectedColor: Colors.orange.shade200,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
