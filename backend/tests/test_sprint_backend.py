@@ -189,6 +189,8 @@ def test_summary_and_chart_share_local_dates_and_do_not_invent_no_pain(client, c
             "total_attacks": 2,
             "avg_intensity": 6.0,
             "max_intensity": 8,
+            "completed_attacks": 1,
+            "avg_duration_minutes": 60.0,
             "diary_recorded": True,
             "headache_present": True,
         },
@@ -197,6 +199,8 @@ def test_summary_and_chart_share_local_dates_and_do_not_invent_no_pain(client, c
             "total_attacks": 1,
             "avg_intensity": 9.0,
             "max_intensity": 9,
+            "completed_attacks": 0,
+            "avg_duration_minutes": None,
             "diary_recorded": False,
             "headache_present": None,
         },
@@ -392,3 +396,28 @@ def test_future_end_not_counted_and_long_completed_attack_uses_full_duration(
     summary = client.get("/api/v1/analytics/summary", headers=headers).json()
     assert summary["completed_attacks"] == 1
     assert summary["avg_duration_minutes"] == 120
+
+
+def test_chart_duration_counts_only_finished_attacks_and_updates_after_delete(client, clock):
+    headers = login(client)
+    first = attack(client, headers, "2026-10-10T10:00:00Z", 4)
+    second = attack(client, headers, "2026-10-10T12:00:00Z", 8)
+    active = attack(client, headers, "2026-10-10T14:00:00Z", 6)
+    client.put(f"/api/v1/attacks/{first['id']}", headers=headers,
+               json={"end_time": "2026-10-10T10:00:30Z"})
+    client.put(f"/api/v1/attacks/{second['id']}", headers=headers,
+               json={"end_time": "2026-10-10T13:00:00Z"})
+    # A future end time is not a completed observation.
+    client.put(f"/api/v1/attacks/{active['id']}", headers=headers,
+               json={"end_time": "2026-10-12T14:00:00Z"})
+    params = {"from_date": "2026-10-10", "to_date": "2026-10-10"}
+    def point():
+        response = client.get("/api/v1/analytics/intensity", headers=headers, params=params)
+        assert response.status_code == 200
+        return response.json()["points"][0]
+    assert point()["completed_attacks"] == 2
+    assert point()["avg_duration_minutes"] == 30.25
+    assert client.delete(f"/api/v1/attacks/{second['id']}", headers=headers).status_code == 204
+    assert point()["total_attacks"] == 2
+    assert point()["completed_attacks"] == 1
+    assert point()["avg_duration_minutes"] == 0.5

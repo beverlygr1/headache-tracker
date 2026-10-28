@@ -59,11 +59,12 @@ def test_headache_migration_preserves_history_and_unknown_labels(tmp_path, diale
                 )
             ).one()
             assert row == (None, 7.5, 1500)
+            assert db.execute(sa.text("SELECT token_version FROM users")).scalar_one() == 0
             assert (
                 db.execute(
                     sa.text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "0005_wellness_tables"
+                == "0007_user_avatars"
             )
             db.execute(
                 sa.text("UPDATE diary_entries SET headache_present = :value"),

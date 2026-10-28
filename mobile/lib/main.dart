@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'app/app.dart';
 import 'app/auth_gate.dart';
@@ -48,6 +49,8 @@ Future<Widget> _buildHome() async {
     client: client,
     authApi: AuthApi(client),
     profileApi: ProfileApi(client),
+    deviceTimeZone: () async =>
+        (await FlutterTimezone.getLocalTimezone()).identifier,
   )..restoreSession();
 
   return AuthGate(

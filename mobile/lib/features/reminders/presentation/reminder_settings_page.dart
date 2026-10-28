@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/utils/app_time_picker.dart';
 import '../../tracker/presentation/widgets/common.dart';
 import '../state/reminder_controller.dart';
 
@@ -35,16 +36,10 @@ class _ReminderSettingsPageState extends State<ReminderSettingsPage> {
 
   Future<void> _pickTime() async {
     final settings = _controller.settings;
-    final picked = await showTimePicker(
+    final picked = await showAppTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: settings.hour, minute: settings.minute),
       helpText: 'Время напоминания',
-      cancelText: 'Отмена',
-      confirmText: 'Готово',
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
     );
     if (picked == null || !mounted) return;
     try {

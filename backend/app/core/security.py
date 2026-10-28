@@ -27,26 +27,27 @@ def verify_password(password: str, hashed_password: str) -> bool:
         return False
 
 
-def _create_token(subject: int, token_type: TokenType, expires_delta: timedelta) -> str:
+def _create_token(subject: int, token_type: TokenType, expires_delta: timedelta, token_version: int = 0) -> str:
     now = datetime.now(timezone.utc)
     payload: dict[str, Any] = {
         "sub": str(subject),
         "type": token_type,
+        "ver": token_version,
         "iat": now,
         "exp": now + expires_delta,
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
-def create_access_token(user_id: int) -> str:
-    return _create_token(user_id, "access", timedelta(minutes=settings.access_token_expire_minutes))
+def create_access_token(user_id: int, token_version: int = 0) -> str:
+    return _create_token(user_id, "access", timedelta(minutes=settings.access_token_expire_minutes), token_version)
 
 
-def create_refresh_token(user_id: int) -> str:
-    return _create_token(user_id, "refresh", timedelta(days=settings.refresh_token_expire_days))
+def create_refresh_token(user_id: int, token_version: int = 0) -> str:
+    return _create_token(user_id, "refresh", timedelta(days=settings.refresh_token_expire_days), token_version)
 
 
-def decode_token(token: str, expected_type: TokenType) -> int:
+def decode_session_token(token: str, expected_type: TokenType) -> tuple[int, int]:
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
     except InvalidTokenError as exc:
@@ -57,6 +58,13 @@ def decode_token(token: str, expected_type: TokenType) -> int:
     if subject is None:
         raise TokenDecodeError("В токене отсутствует subject")
     try:
-        return int(subject)
+        version = payload.get("ver", 0)
+        if type(version) is not int or version < 0:
+            raise TokenDecodeError("Некорректная версия сессии")
+        return int(subject), version
     except (TypeError, ValueError) as exc:
         raise TokenDecodeError("Некорректный subject токена") from exc
+
+
+def decode_token(token: str, expected_type: TokenType) -> int:
+    return decode_session_token(token, expected_type)[0]

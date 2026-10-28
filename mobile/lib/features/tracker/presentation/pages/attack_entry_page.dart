@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/utils/app_time_picker.dart';
 import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
+import '../../../attacks/data/medications_api.dart';
+import '../../../attacks/presentation/widgets/medication_selector.dart';
 import '../../domain/attack_draft.dart';
 import '../../domain/attack_record.dart';
+import '../../domain/pain_zones.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
 import 'attack_review_page.dart';
@@ -14,11 +18,13 @@ class AttackEntryPage extends StatefulWidget {
   const AttackEntryPage({
     required this.controller,
     this.initialRecord,
+    this.medicationsApi,
     super.key,
   });
 
   final TrackerController controller;
   final AttackRecord? initialRecord;
+  final MedicationsApi? medicationsApi;
 
   @override
   State<AttackEntryPage> createState() => _AttackEntryPageState();
@@ -31,22 +37,44 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   late Set<String> _symptoms;
   late String? _painType;
   late Set<String> _medications;
-  List<String> _selectedMedications = [];
   late Set<String> _reliefFactors;
   bool _showDetails = false;
   bool _openingMap = false;
   bool _openingReview = false;
 
-  final List<String> _painOptions = ['Лоб', 'Виски', 'Темя', 'Затылок'];
-  final List<String> _symptomOptions = ['Тошнота', 'Свет мешает'];
+  // Частые зоны для быстрой записи; остальные — на схеме головы.
+  final List<String> _painOptions = [
+    PainZones.forehead,
+    PainZones.rightTemple,
+    PainZones.leftTemple,
+    PainZones.crown,
+    PainZones.occiput,
+    PainZones.wholeHead,
+  ];
+  final List<String> _symptomOptions = [
+    'Тошнота',
+    'Свет мешает',
+    'Звук мешает',
+    'Головокружение',
+    'Слабость',
+    'Рвота',
+    'Нарушение зрения',
+  ];
   final List<String> _painTypeOptions = [
     'Пульсирующая',
     'Давящая',
     'Ноющая',
     'Острая',
   ];
-  final List<String> _medicationOptions = [];
-  final List<String> _reliefOptions = ['Отдых', 'Сон', 'Тишина', 'Вода'];
+  final List<String> _reliefOptions = [
+    'Отдых',
+    'Сон',
+    'Тишина',
+    'Вода',
+    'Тёмная комната',
+    'Прохладный компресс',
+    'Свежий воздух',
+  ];
 
   @override
   void initState() {
@@ -75,11 +103,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     }
     if (_painType != null && !_painTypeOptions.contains(_painType)) {
       _painTypeOptions.add(_painType!);
-    }
-    for (final medication in _medications) {
-      if (!_medicationOptions.contains(medication)) {
-        _medicationOptions.add(medication);
-      }
     }
     for (final factor in _reliefFactors) {
       if (!_reliefOptions.contains(factor)) _reliefOptions.add(factor);
@@ -353,64 +376,26 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Card(
-                      elevation: 0,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                    AppCard(
                         child: MedicationSelector(
-                          selectedMedications: _selectedMedications,
-                          onChanged: (newList) {
-                            setState(() => _selectedMedications = newList);
-                          },
-                          onSearch: (query) async {
-                            final preset = [
-                              'Ибупрофен',
-                              'Парацетамол',
-                              'Суматриптан',
-                              'Нурофен',
-                              'Миг 400',
-                              'Аспирин',
-                              'Пенталгин',
-                              'Солпадеин',
-                            ];
-                            return preset
-                                .where((m) => m
-                                    .toLowerCase()
-                                    .contains(query.toLowerCase()))
-                                .toList();
-                          },
-                        ),
-                      ),
-                    ),
-                    //const SizedBox(height: 20),
-                    // _ChoiceSection(
-                    //   title: 'Препараты',
-                    //   options: _medicationOptions,
-                    //   selected: _medications,
-                    //   onSelected: (option) => _toggle(_medications, option),
-                    //   onAdd: () => _addCustomOption(
-                    //     title: 'Добавить препарат',
-                    //     options: _medicationOptions,
-                    //     selected: _medications,
-                    //     maxLength: 80,
-                    //   ),
-                    // ),
+                      selectedMedications: _medications.toList(),
+                      onChanged: (values) =>
+                          setState(() => _medications = values.toSet()),
+                      onSearch: (query) async => widget.medicationsApi != null
+                          ? widget.medicationsApi!.search(query)
+                          : presetMedications
+                              .where((name) => name
+                                  .toLowerCase()
+                                  .contains(query.toLowerCase()))
+                              .toList(),
+                      onAddCustom: widget.medicationsApi?.addCustom,
+                    )),
                     const SizedBox(height: 14),
                     _ChoiceSection(
                       title: 'Что помогло?',
                       options: _reliefOptions,
                       selected: _reliefFactors,
                       onSelected: (option) => _toggle(_reliefFactors, option),
-                      onAdd: () => _addCustomOption(
-                        title: 'Добавить способ облегчения',
-                        options: _reliefOptions,
-                        selected: _reliefFactors,
-                        maxLength: 80,
-                      ),
                     ),
                   ],
                   const SizedBox(height: 20),
@@ -431,12 +416,10 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   }
 
   Future<void> _selectStartTime() async {
-    final result = await showTimePicker(
+    final result = await showAppTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_startTime),
       helpText: 'Время начала боли',
-      cancelText: 'Отмена',
-      confirmText: 'Готово',
     );
     if (result == null || !mounted) return;
     setState(() {
@@ -471,21 +454,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     setState(() {
       if (!options.contains(value)) options.add(value);
       selected.add(value);
-    });
-  }
-
-  Future<void> _addCustomPainType() async {
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => const _AddOptionDialog(
-        title: 'Добавить характер боли',
-        maxLength: 80,
-      ),
-    );
-    if (value == null || value.isEmpty || !mounted) return;
-    setState(() {
-      if (!_painTypeOptions.contains(value)) _painTypeOptions.add(value);
-      _painType = value;
     });
   }
 
@@ -545,8 +513,7 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
               painZones: _painLocations,
               symptoms: _symptoms,
               painType: _painType,
-              medications: _selectedMedications,
-              // medications: _medications,
+              medications: _medications,
               reliefFactors: _reliefFactors,
             ),
           ),
@@ -668,7 +635,8 @@ class _ChoiceSection extends StatelessWidget {
                   onPressed: onOpenMap,
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.blue,
-                    textStyle: const TextStyle(fontSize: 11),
+                    textStyle:
+                        const TextStyle(fontFamily: 'Onest', fontSize: 11),
                   ),
                   child: const Text('Выбрать на схеме'),
                 ),
@@ -678,9 +646,12 @@ class _ChoiceSection extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (final option in options)
                 ChoiceChip(
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   label: Text(option),
                   selected: selected.contains(option),
                   onSelected: (_) => onSelected(option),
@@ -698,147 +669,25 @@ class _ChoiceSection extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                 ),
               if (onAdd != null)
-                ActionChip(
-                  key: ValueKey('add-option-$title'),
-                  avatar: const Icon(Icons.add_rounded, size: 16, color: AppColors.blue),
-                  label: options.isEmpty ? const Text('Добавить') : const SizedBox.shrink(),
-                  labelPadding: options.isEmpty
-                      ? const EdgeInsets.only(right: 6)
-                      : EdgeInsets.zero,
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: onAdd,
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(
-                    color: AppColors.blue,
-                    style: BorderStyle.solid,
-                  ),
-                  shape: const StadiumBorder(),
-                ),
+                SizedBox.square(
+                    dimension: 32,
+                    child: IconButton.outlined(
+                        key: ValueKey('add-option-$title'),
+                        tooltip: 'Добавить свой вариант',
+                        onPressed: onAdd,
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                            foregroundColor: AppColors.blue,
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: AppColors.blue),
+                            shape: const CircleBorder(),
+                            minimumSize: const Size(32, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        icon: const Icon(Icons.add_rounded, size: 18))),
             ],
           ),
         ],
       ),
-    );
-  }
-}
-
-class MedicationSelector extends StatelessWidget {
-  final List<String> selectedMedications;
-  final ValueChanged<List<String>> onChanged;
-  final Future<List<String>> Function(String query) onSearch;
-
-  const MedicationSelector({
-    super.key,
-    required this.selectedMedications,
-    required this.onChanged,
-    required this.onSearch,
-  });
-
-  void _addMedication(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return;
-
-    if (!selectedMedications.contains(trimmed)) {
-      final updated = List<String>.from(selectedMedications)..add(trimmed);
-      onChanged(updated);
-    }
-  }
-
-  void _removeMedication(String name) {
-    final updated = List<String>.from(selectedMedications)..remove(name);
-    onChanged(updated);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Компактный заголовок в стиле соседних карточек
-        const Text(
-          'Принятые препараты',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        Autocomplete<String>(
-          optionsBuilder: (TextEditingValue textEditingValue) async {
-            final query = textEditingValue.text.trim();
-            if (query.isEmpty) {
-              return const Iterable<String>.empty();
-            }
-            final results = await onSearch(query);
-
-            final hasExactMatch = results.any(
-              (m) => m.toLowerCase() == query.toLowerCase(),
-            );
-
-            if (!hasExactMatch && query.isNotEmpty) {
-              return [...results, '+ Добавить «$query»'];
-            }
-            return results;
-          },
-          onSelected: (String selection) {
-            if (selection.startsWith('+ Добавить «')) {
-              final rawName = selection
-                  .replaceFirst('+ Добавить «', '')
-                  .replaceAll(RegExp(r'»$'), '');
-              _addMedication(rawName);
-            } else {
-              _addMedication(selection);
-            }
-          },
-          fieldViewBuilder:
-              (context, controller, focusNode, onEditingComplete) {
-            return TextField(
-              controller: controller,
-              focusNode: focusNode,
-              style: const TextStyle(fontSize: 12),
-              // Аккуратный размер вводимого текста
-              decoration: InputDecoration(
-                hintText: 'Начните вводить (например, Нурофен)...',
-                hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10, // Уменьшенные отступы внутри инпута
-                ),
-              ),
-            );
-          },
-        ),
-
-        if (selectedMedications.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: selectedMedications.map((med) {
-              return InputChip(
-                label: Text(med, style: const TextStyle(fontSize: 12)),
-                selected: true,
-                selectedColor: Colors.deepPurple.shade50,
-                deleteIcon: const Icon(Icons.close, size: 16),
-                onDeleted: () => _removeMedication(med),
-              );
-            }).toList(),
-          ),
-        ],
-      ],
     );
   }
 }

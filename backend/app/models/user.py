@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import Boolean, CheckConstraint, Date, Integer, String, false, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,6 +20,7 @@ class User(TimestampMixin, Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), nullable=False)
     time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     gender: Mapped[str | None] = mapped_column(String(32), nullable=True)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -36,3 +37,10 @@ class User(TimestampMixin, Base):
     diary_entries = relationship(
         "DiaryEntry", back_populates="user", cascade="all, delete-orphan"
     )
+    avatar = relationship(
+        "UserAvatar", uselist=False, cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    @property
+    def avatar_updated_at(self) -> datetime | None:
+        return self.avatar.updated_at if self.avatar is not None else None

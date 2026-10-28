@@ -88,6 +88,9 @@ class ApiClient {
     }
 
     options.extra[_retriedKey] = true;
+    // Отправленную FormData (загрузка фото) повторно отправить нельзя.
+    final data = options.data;
+    if (data is FormData) options.data = data.clone();
     return dio.fetch<dynamic>(options);
   }
 

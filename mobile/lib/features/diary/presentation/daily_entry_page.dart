@@ -23,8 +23,8 @@ class DailyEntryPage extends StatefulWidget {
 class _DailyEntryPageState extends State<DailyEntryPage> {
   final _formKey = GlobalKey<FormState>();
   final _sleep = TextEditingController();
-  int? _waterMl;
-  int? _caffeineMg;
+  final _water = TextEditingController();
+  final _caffeine = TextEditingController();
   bool? _headachePresent;
   int? _sleepQuality;
   int? _stress;
@@ -43,6 +43,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
   @override
   void dispose() {
     _sleep.dispose();
+    _water.dispose();
+    _caffeine.dispose();
     super.dispose();
   }
 
@@ -58,8 +60,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
       _sleep.text = entry?.sleepHours == null
           ? ''
           : DailyEntry.formatHours(entry!.sleepHours!);
-      _waterMl = entry?.waterMl;
-      _caffeineMg = entry?.caffeineIntake;
+      _water.text = entry?.waterMl?.toString() ?? '';
+      _caffeine.text = entry?.caffeineIntake?.toString() ?? '';
       _headachePresent = entry?.headachePresent;
       _sleepQuality = entry?.sleepQuality;
       _stress = entry?.stressLevel;
@@ -74,8 +76,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
     if (_saving || !_formKey.currentState!.validate()) return;
     if (!_hasExistingEntry &&
         _sleep.text.trim().isEmpty &&
-        _waterMl == null &&
-        _caffeineMg == null &&
+        _water.text.trim().isEmpty &&
+        _caffeine.text.trim().isEmpty &&
         _headachePresent == null &&
         _sleepQuality == null &&
         _stress == null) {
@@ -94,8 +96,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
           headachePresent: _headachePresent,
           sleepHours: double.tryParse(_sleep.text.trim().replaceAll(',', '.')),
           sleepQuality: _sleepQuality,
-          waterMl: _waterMl,
-          caffeineIntake: _caffeineMg,
+          waterMl: int.tryParse(_water.text.trim()),
+          caffeineIntake: int.tryParse(_caffeine.text.trim()),
           stressLevel: _stress,
         ),
       );
@@ -185,9 +187,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                         ),
                         const SizedBox(height: 16),
                         AppCard(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               const _FieldTitle(
                                 icon: Icons.bedtime_outlined,
                                 title: 'Сколько вы спали?',
@@ -209,7 +211,6 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                   labelText: 'Продолжительность сна',
                                   hintText: 'Например, 7,5',
                                   suffixText: 'часы',
-                                  border: OutlineInputBorder(),
                                 ),
                                 validator: (text) {
                                   if (text == null || text.trim().isEmpty) {
@@ -241,15 +242,10 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                               setState(() => _sleepQuality = value),
                         ),
                         const SizedBox(height: 16),
-                        WaterTrackerCard(
-                          waterMl: _waterMl ?? 0,
-                          onChanged: (val) => setState(() => _waterMl = val),
-                        ),
+                        WaterTrackerCard(controller: _water, enabled: !_saving),
                         const SizedBox(height: 16),
                         CaffeineTrackerCard(
-                          caffeineMg: _caffeineMg ?? 0,
-                          onChanged: (val) => setState(() => _caffeineMg = val),
-                        ),
+                            controller: _caffeine, enabled: !_saving),
                         const SizedBox(height: 16),
                         _RatingCard(
                           title: 'Насколько напряжённым был день?',
@@ -384,174 +380,149 @@ class _RatingCard extends StatelessWidget {
 }
 
 class WaterTrackerCard extends StatelessWidget {
-  final int waterMl;
-  final ValueChanged<int> onChanged;
-
-  const WaterTrackerCard({
-    super.key,
-    required this.waterMl,
-    required this.onChanged,
-  });
-
+  const WaterTrackerCard(
+      {super.key, required this.controller, this.enabled = true});
+  final TextEditingController controller;
+  final bool enabled;
   @override
-  Widget build(BuildContext context) {
-    final glasses = (waterMl / 250).round();
-
-    return Card(
-      elevation: 0,
-      color: Colors.blue.shade50.withOpacity(0.5),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.water_drop_rounded, color: Colors.blue),
-                SizedBox(width: 8),
-                Text(
-                  'Сколько воды выпили?',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$waterMl мл',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-                    ),
-                    Text(
-                      '$glasses ${glasses == 1 ? "стакан" : (glasses >= 2 && glasses <= 4) ? "стакана" : "стаканов"}',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    IconButton.filledTonal(
-                      onPressed: waterMl >= 250 ? () => onChanged(waterMl - 250) : null,
-                      icon: const Icon(Icons.remove),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(
-                      onPressed: () => onChanged(waterMl + 250),
-                      icon: const Icon(Icons.add),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [500, 1000, 1500, 2000].map((preset) {
-                final isSelected = waterMl == preset;
-                return ChoiceChip(
-                  label: Text('$preset мл'),
-                  selected: isSelected,
-                  onSelected: (_) => onChanged(preset),
-                  selectedColor: Colors.blue.shade200,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _QuantityTrackerCard(
+      title: 'Сколько воды выпили?',
+      label: 'Количество воды',
+      hint: 'Для быстрого ввода: один стакан — 250 мл.',
+      prefix: 'water',
+      icon: Icons.water_drop_outlined,
+      unit: 'мл',
+      step: 250,
+      presets: const [250, 500, 1000, 1500, 2000],
+      controller: controller,
+      enabled: enabled);
 }
 
 class CaffeineTrackerCard extends StatelessWidget {
-  final int caffeineMg;
-  final ValueChanged<int> onChanged;
+  const CaffeineTrackerCard(
+      {super.key, required this.controller, this.enabled = true});
+  final TextEditingController controller;
+  final bool enabled;
+  @override
+  Widget build(BuildContext context) => _QuantityTrackerCard(
+      title: 'Сколько кофеина употребили?',
+      label: 'Количество кофеина',
+      hint:
+          'Быстрый ввод: условная чашка — 100 мг. Точное количество можно указать вручную.',
+      prefix: 'caffeine',
+      icon: Icons.coffee_outlined,
+      unit: 'мг',
+      step: 100,
+      presets: const [0, 50, 100, 200],
+      controller: controller,
+      enabled: enabled);
+}
 
-  const CaffeineTrackerCard({
-    super.key,
-    required this.caffeineMg,
-    required this.onChanged,
-  });
+class _QuantityTrackerCard extends StatelessWidget {
+  const _QuantityTrackerCard(
+      {required this.title,
+      required this.label,
+      required this.hint,
+      required this.prefix,
+      required this.icon,
+      required this.unit,
+      required this.step,
+      required this.presets,
+      required this.controller,
+      required this.enabled});
+  final String title, label, hint, prefix, unit;
+  final IconData icon;
+  final int step;
+  final List<int> presets;
+  final TextEditingController controller;
+  final bool enabled;
+  static const _max = 2147483647;
+
+  void _set(int value) {
+    controller.value = TextEditingValue(
+        text: '$value',
+        selection: TextSelection.collapsed(offset: '$value'.length));
+  }
 
   @override
-  Widget build(BuildContext context) {
-    final cups = (caffeineMg / 100).round();
-
-    return Card(
-      elevation: 0,
-      color: Colors.orange.shade50.withOpacity(0.5),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.coffee_rounded, color: Colors.brown),
-                SizedBox(width: 8),
-                Text(
-                  'Сколько кофеина употребили?',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$cups ${cups == 1 ? "чашка" : (cups >= 2 && cups <= 4) ? "чашки" : "чашек"}',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.brown),
-                    ),
-                    Text(
-                      '~$caffeineMg мг кофеина',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    IconButton.filledTonal(
-                      onPressed: caffeineMg >= 100 ? () => onChanged(caffeineMg - 100) : null,
-                      icon: const Icon(Icons.remove),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(
-                      onPressed: () => onChanged(caffeineMg + 100),
-                      icon: const Icon(Icons.add),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
+  Widget build(BuildContext context) => ValueListenableBuilder<
+          TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, text, _) {
+        final current = int.tryParse(text.text.trim());
+        final valid = text.text.trim().isEmpty ||
+            current != null && current >= 0 && current <= _max;
+        return AppCard(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _FieldTitle(icon: icon, title: title),
+          const SizedBox(height: 10),
+          Text(hint,
+              style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+          const SizedBox(height: 14),
+          TextFormField(
+            key: ValueKey('$prefix-field'),
+            controller: controller,
+            enabled: enabled,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) =>
+                FocusManager.instance.primaryFocus?.unfocus(),
+            decoration: InputDecoration(
+                labelText: label, suffixText: unit, hintText: 'Не указано'),
+            validator: (text) {
+              if (text == null || text.trim().isEmpty) return null;
+              final number = int.tryParse(text.trim());
+              return number == null || number < 0 || number > _max
+                  ? 'Введите целое неотрицательное число'
+                  : null;
+            },
+          ),
+          const SizedBox(height: 10),
+          Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: [0, 100, 200, 300].map((mg) {
-                final c = (mg / 100).round();
-                final isSelected = caffeineMg == mg;
-                return ChoiceChip(
-                  label: Text(mg == 0 ? 'Не пил' : '$c ${c == 1 ? "чашка" : "чашки"}'),
-                  selected: isSelected,
-                  onSelected: (_) => onChanged(mg),
-                  selectedColor: Colors.orange.shade200,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                IconButton.filledTonal(
+                    key: ValueKey('$prefix-decrease'),
+                    tooltip: 'Уменьшить на $step $unit',
+                    onPressed: enabled && valid && (current ?? 0) > 0
+                        ? () => _set(((current ?? 0) - step).clamp(0, _max))
+                        : null,
+                    icon: const Icon(Icons.remove_rounded)),
+                Text('$step $unit',
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600)),
+                IconButton.filledTonal(
+                    key: ValueKey('$prefix-increase'),
+                    tooltip: 'Добавить $step $unit',
+                    onPressed: enabled && valid && (current ?? 0) <= _max - step
+                        ? () => _set((current ?? 0) + step)
+                        : null,
+                    icon: const Icon(Icons.add_rounded)),
+                TextButton(
+                    key: ValueKey('clear-$prefix'),
+                    onPressed: enabled && text.text.isNotEmpty
+                        ? controller.clear
+                        : null,
+                    child: const Text('Очистить')),
+              ]),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, runSpacing: 6, children: [
+            for (final preset in presets)
+              ChoiceChip(
+                  key: ValueKey('$prefix-preset-$preset'),
+                  label: Text('$preset $unit'),
+                  selected: current == preset,
+                  onSelected: enabled ? (_) => _set(preset) : null,
+                  selectedColor: AppColors.blueSoft,
+                  showCheckmark: false,
+                  labelStyle:
+                      const TextStyle(fontFamily: 'Onest', fontSize: 11),
+                  side: BorderSide.none,
+                  backgroundColor: AppColors.background),
+          ]),
+        ]));
+      });
 }

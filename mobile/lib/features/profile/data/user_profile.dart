@@ -9,10 +9,12 @@ class UserProfile {
     this.birthDate,
     this.onboardingStep = 0,
     this.onboardingCompleted = false,
+    this.avatarUpdatedAt,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final birthDate = json['birth_date'];
+    final avatarUpdatedAt = json['avatar_updated_at'];
     return UserProfile(
       id: json['id'] as int,
       email: json['email'] as String,
@@ -22,6 +24,8 @@ class UserProfile {
       birthDate: birthDate is String ? DateTime.parse(birthDate) : null,
       onboardingStep: json['onboarding_step'] as int? ?? 0,
       onboardingCompleted: json['onboarding_completed'] as bool? ?? false,
+      avatarUpdatedAt:
+          avatarUpdatedAt is String ? DateTime.parse(avatarUpdatedAt) : null,
     );
   }
 
@@ -33,4 +37,9 @@ class UserProfile {
   final DateTime? birthDate;
   final int onboardingStep;
   final bool onboardingCompleted;
+
+  /// `null` — фото не загружено.
+  final DateTime? avatarUpdatedAt;
+
+  bool get hasAvatar => avatarUpdatedAt != null;
 }

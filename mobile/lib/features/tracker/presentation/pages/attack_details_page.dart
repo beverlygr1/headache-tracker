@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
+import '../../../attacks/data/medications_api.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
@@ -12,11 +13,13 @@ class AttackDetailsPage extends StatelessWidget {
   const AttackDetailsPage({
     required this.controller,
     required this.recordId,
+    this.medicationsApi,
     super.key,
   });
 
   final TrackerController controller;
   final int recordId;
+  final MedicationsApi? medicationsApi;
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +163,19 @@ class AttackDetailsPage extends StatelessWidget {
                 const SizedBox(height: 10),
                 SecondaryActionButton(
                   label: 'Редактировать запись',
-                  onPressed: () => _openEditor(context, record),
+                  onPressed: controller.isSaving
+                      ? null
+                      : () => _openEditor(context, record),
+                ),
+                const SizedBox(height: 14),
+                TextButton.icon(
+                  key: const ValueKey('delete-attack'),
+                  onPressed:
+                      controller.isSaving ? null : () => _delete(context),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Удалить запись'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error),
                 ),
               ],
             ),
@@ -168,6 +183,33 @@ class AttackDetailsPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить приступ?'),
+        content: const Text(
+            'Запись будет удалена из дневника и статистики. Восстановить её не получится.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена')),
+          TextButton(
+              key: const ValueKey('confirm-delete-attack'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Удалить')),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await controller.deleteAttack(recordId);
+      if (context.mounted) Navigator.pop(context);
+    } catch (error) {
+      if (context.mounted) showErrorSnackBar(context, describeError(error));
+    }
   }
 
   Future<void> _finish(BuildContext context, AttackRecord record) async {
@@ -181,8 +223,10 @@ class AttackDetailsPage extends StatelessWidget {
   Future<void> _openEditor(BuildContext context, AttackRecord record) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) =>
-            AttackEntryPage(controller: controller, initialRecord: record),
+        builder: (context) => AttackEntryPage(
+            controller: controller,
+            initialRecord: record,
+            medicationsApi: medicationsApi),
       ),
     );
   }

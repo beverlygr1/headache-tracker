@@ -29,6 +29,8 @@ abstract interface class AttackRepository {
   });
 
   Future<AttackRecord> finish(int id, DateTime endTime);
+
+  Future<void> delete(int id);
 }
 
 /// Приступы из FastAPI backend.
@@ -104,6 +106,9 @@ class ApiAttackRepository implements AttackRepository {
   Future<AttackRecord> finish(int id, DateTime endTime) async {
     return _toRecord(await _api.update(id, endTime: endTime));
   }
+
+  @override
+  Future<void> delete(int id) => _api.delete(id);
 
   static AttackRecord _toRecord(AttackDto dto) {
     return AttackRecord(
@@ -186,6 +191,13 @@ class InMemoryAttackRepository implements AttackRepository {
   @override
   Future<AttackRecord> finish(int id, DateTime endTime) async {
     return _replace(id, (record) => record.copyWith(endTime: endTime));
+  }
+
+  @override
+  Future<void> delete(int id) async {
+    final index = _records.indexWhere((record) => record.id == id);
+    if (index == -1) throw StateError('Приступ $id не найден');
+    _records.removeAt(index);
   }
 
   AttackRecord _replace(int id, AttackRecord Function(AttackRecord) change) {

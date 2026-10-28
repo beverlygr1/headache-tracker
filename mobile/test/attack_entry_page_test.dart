@@ -41,7 +41,10 @@ void main() {
     await openAddDialog(tester, 'Что ещё чувствуете?');
     expect(find.text('Добавить симптом'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), '  Головокружение ');
+    await tester.enterText(
+        find.descendant(
+            of: find.byType(AlertDialog), matching: find.byType(TextField)),
+        '  Головокружение ');
     await tester.tap(find.widgetWithText(FilledButton, 'Добавить'));
     await tester.pumpAndSettle();
 
@@ -54,7 +57,10 @@ void main() {
       (tester) async {
     await openAddDialog(tester, 'Где болит?');
 
-    await tester.enterText(find.byType(TextField), 'Шея');
+    await tester.enterText(
+        find.descendant(
+            of: find.byType(AlertDialog), matching: find.byType(TextField)),
+        'Шея');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
@@ -64,7 +70,8 @@ void main() {
 }
 
 Future<void> _reveal(WidgetTester tester, Finder target) async {
-  await tester.scrollUntilVisible(target, 180);
+  await tester.scrollUntilVisible(target, 180,
+      scrollable: find.byType(Scrollable).first);
   final height = tester.getSize(find.byType(Scaffold).last).height;
   for (var i = 0; i < 8; i++) {
     final y = tester.getCenter(target).dy;
