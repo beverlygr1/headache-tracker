@@ -150,6 +150,19 @@ class TrackerController extends ChangeNotifier {
     await _save(() => _repository.finish(id, endTime));
   }
 
+  Future<void> deleteAttack(int id) async {
+    if (_isSaving) throw StateError('Дождитесь сохранения');
+    _isSaving = true;
+    _notify();
+    try {
+      await _repository.delete(id);
+      _records.removeWhere((record) => record.id == id);
+    } finally {
+      _isSaving = false;
+      _notify();
+    }
+  }
+
   Future<void> _save(Future<AttackRecord> Function() request) async {
     if (_isSaving) return;
     _isSaving = true;

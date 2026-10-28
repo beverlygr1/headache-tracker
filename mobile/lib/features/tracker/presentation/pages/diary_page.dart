@@ -16,12 +16,14 @@ class DiaryPage extends StatefulWidget {
     required this.onOpenAttack,
     required this.onOpenDailyEntry,
     this.dailyEntries = const [],
+    this.today,
     this.diaryError,
     this.onRetryDiary,
     super.key,
   });
 
   final TrackerController controller;
+  final DateTime? today;
   final ValueChanged<AttackRecord> onOpenAttack;
   final ValueChanged<DateTime> onOpenDailyEntry;
   final List<DailyEntry> dailyEntries;
@@ -37,7 +39,7 @@ class _DiaryPageState extends State<DiaryPage> {
   DateTime? _selectedDate;
 
   Future<void> _chooseDate() async {
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(widget.today ?? DateTime.now());
     final selected = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? today,
@@ -55,7 +57,7 @@ class _DiaryPageState extends State<DiaryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(widget.today ?? DateTime.now());
     final anchorDate = _selectedDate ?? today;
     final records = widget.controller.records.where((record) {
       if (_selectedDate != null &&
@@ -140,23 +142,25 @@ class _DiaryPageState extends State<DiaryPage> {
               ],
             ),
           ),
+          const SizedBox(height: 24),
           if (_selectedDate != null)
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${RussianDate.dayMonth(_selectedDate!)} ${_selectedDate!.year}',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                TextButton(
-                  key: const ValueKey('diary-all-dates'),
-                  onPressed: () => setState(() => _selectedDate = null),
-                  child: const Text('Все даты'),
-                ),
-              ],
-            ),
-          const SizedBox(height: 14),
+            Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${RussianDate.dayMonth(_selectedDate!)} ${_selectedDate!.year}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    TextButton(
+                      key: const ValueKey('diary-all-dates'),
+                      onPressed: () => setState(() => _selectedDate = null),
+                      child: const Text('Все даты'),
+                    ),
+                  ],
+                )),
           if (hasActiveAttack)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -189,9 +193,9 @@ class _DiaryPageState extends State<DiaryPage> {
           if (widget.diaryError != null) ...[
             const SizedBox(height: 16),
             AppCard(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   const Text('Не удалось загрузить самочувствие'),
                   const SizedBox(height: 8),
                   Text(
@@ -216,10 +220,11 @@ class _DiaryPageState extends State<DiaryPage> {
             for (final entry in dailyEntries) ...[
               AppCard(
                 onTap: () => widget.onOpenDailyEntry(entry.date),
-                child: Row(children: [
-                  const Icon(Icons.spa_outlined, color: AppColors.teal),
-                  const SizedBox(width: 14),
-                  Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.spa_outlined, color: AppColors.teal),
+                    const SizedBox(width: 14),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

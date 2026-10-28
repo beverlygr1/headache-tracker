@@ -28,6 +28,29 @@ ThemeData buildAppTheme() {
     scaffoldBackgroundColor: AppColors.background,
     dividerColor: AppColors.line,
     splashFactory: InkRipple.splashFactory,
+    inputDecorationTheme: InputDecorationThemeData(
+      filled: true,
+      fillColor: AppColors.background,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.blue, width: 1.5),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        textStyle:
+            const TextStyle(fontFamily: 'Onest', fontWeight: FontWeight.w600),
+      ),
+    ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
         color: AppColors.ink,

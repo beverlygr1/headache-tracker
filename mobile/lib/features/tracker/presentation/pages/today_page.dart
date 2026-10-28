@@ -4,6 +4,8 @@ import '../../../../app/theme.dart';
 import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../../diary/data/daily_entry.dart';
+import '../../../forecast/presentation/forecast_card.dart';
+import '../../../forecast/state/forecast_controller.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
@@ -16,6 +18,8 @@ class TodayPage extends StatelessWidget {
     required this.onProfileTap,
     required this.onOpenDailyEntry,
     this.dailyEntries = const [],
+    this.today,
+    this.forecastController,
     this.diaryError,
     this.onRetryDiary,
     this.userName,
@@ -23,6 +27,8 @@ class TodayPage extends StatelessWidget {
   });
 
   final TrackerController controller;
+  final DateTime? today;
+  final ForecastController? forecastController;
   final String? userName;
   final VoidCallback onProfileTap;
   final VoidCallback onCreateAttack;
@@ -34,7 +40,7 @@ class TodayPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
+    final today = this.today ?? DateTime.now();
     final name = userName?.trim() ?? '';
     final latest = controller.latestAttack;
     DailyEntry? todayEntry;
@@ -125,53 +131,9 @@ class TodayPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 26),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.wb_sunny_outlined,
-                          size: 18,
-                          color: AppColors.blue,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'ЛИЧНЫЙ ПРОГНОЗ',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    Text(
-                      latest == null && dailyEntries.isEmpty
-                          ? 'Начнём с наблюдений'
-                          : 'Ваш дневник пополняется',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 7),
-                    const Text(
-                      'Записывайте приступы и самочувствие. Личный прогноз появится на следующем этапе.',
-                      style: TextStyle(color: AppColors.muted, height: 1.45),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Сейчас доступны дневник и история',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ForecastCard(
+                  controller: forecastController,
+                  onOpenDailyEntry: onOpenDailyEntry),
               const SizedBox(height: 14),
               PrimaryActionButton(
                 label: controller.activeAttack == null
@@ -227,9 +189,9 @@ class TodayPage extends StatelessWidget {
               const SizedBox(height: 14),
               if (diaryError != null) ...[
                 AppCard(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       const Text('Не удалось загрузить дневник самочувствия'),
                       const SizedBox(height: 8),
                       Text(
@@ -247,9 +209,9 @@ class TodayPage extends StatelessWidget {
               ],
               if (latest == null)
                 AppCard(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
                         dailyEntries.isEmpty
                             ? 'Здесь появится ваша первая запись'

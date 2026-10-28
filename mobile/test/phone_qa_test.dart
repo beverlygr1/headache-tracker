@@ -90,7 +90,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('diary-calendar-picker')));
     await tester.pumpAndSettle();
     expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.byTooltip('Previous month'));
+    await tester.tap(find.byTooltip('Предыдущий месяц'));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(
         of: find.byType(DatePickerDialog), matching: find.text('15')));

@@ -134,10 +134,10 @@ def intensity(
     time_zone: str = "UTC",
 ) -> AnalyticsIntensityResponse:
     window = _window(period, from_date, to_date, time_zone)
-    by_day: dict[date, list[int]] = {}
+    by_day: dict[date, list[Attack]] = {}
     for attack in _attacks(db, user_id, window):
         day = attack.start_time.astimezone(window.zone).date()
-        by_day.setdefault(day, []).append(attack.intensity)
+        by_day.setdefault(day, []).append(attack)
     today = window.now.astimezone(window.zone).date()
     diaries = {
         entry.date: entry
@@ -154,7 +154,14 @@ def intensity(
     points = []
     for offset in range((window.to_date - window.from_date).days + 1):
         day = window.from_date + timedelta(days=offset)
-        values = by_day.get(day, [])
+        attacks = by_day.get(day, [])
+        values = [attack.intensity for attack in attacks]
+        durations = [
+            (attack.end_time - attack.start_time).total_seconds() / 60
+            for attack in attacks
+            if attack.end_time is not None
+            and attack.start_time <= attack.end_time <= window.now
+        ]
         diary = diaries.get(day)
         points.append(
             IntensityPoint(
@@ -162,6 +169,9 @@ def intensity(
                 total_attacks=len(values),
                 avg_intensity=round(sum(values) / len(values), 2) if values else None,
                 max_intensity=max(values) if values else None,
+                completed_attacks=len(durations),
+                avg_duration_minutes=round(sum(durations) / len(durations), 2)
+                if durations else None,
                 diary_recorded=diary is not None,
                 # Preserve the user's label rather than deriving it from absent attacks.
                 headache_present=diary.headache_present if diary is not None else None,

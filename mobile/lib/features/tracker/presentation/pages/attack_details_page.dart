@@ -160,7 +160,19 @@ class AttackDetailsPage extends StatelessWidget {
                 const SizedBox(height: 10),
                 SecondaryActionButton(
                   label: 'Редактировать запись',
-                  onPressed: () => _openEditor(context, record),
+                  onPressed: controller.isSaving
+                      ? null
+                      : () => _openEditor(context, record),
+                ),
+                const SizedBox(height: 14),
+                TextButton.icon(
+                  key: const ValueKey('delete-attack'),
+                  onPressed:
+                      controller.isSaving ? null : () => _delete(context),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Удалить запись'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error),
                 ),
               ],
             ),
@@ -168,6 +180,33 @@ class AttackDetailsPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить приступ?'),
+        content: const Text(
+            'Запись будет удалена из дневника и статистики. Восстановить её не получится.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена')),
+          TextButton(
+              key: const ValueKey('confirm-delete-attack'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Удалить')),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await controller.deleteAttack(recordId);
+      if (context.mounted) Navigator.pop(context);
+    } catch (error) {
+      if (context.mounted) showErrorSnackBar(context, describeError(error));
+    }
   }
 
   Future<void> _finish(BuildContext context, AttackRecord record) async {

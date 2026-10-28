@@ -187,9 +187,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                         ),
                         const SizedBox(height: 16),
                         AppCard(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               const _FieldTitle(
                                 icon: Icons.bedtime_outlined,
                                 title: 'Сколько вы спали?',
@@ -211,7 +211,6 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                   labelText: 'Продолжительность сна',
                                   hintText: 'Например, 7,5',
                                   suffixText: 'часы',
-                                  border: OutlineInputBorder(),
                                 ),
                                 validator: (text) {
                                   if (text == null || text.trim().isEmpty) {
@@ -244,9 +243,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                         ),
                         const SizedBox(height: 16),
                         AppCard(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               const _FieldTitle(
                                 icon: Icons.water_drop_outlined,
                                 title: 'Сколько воды выпили?',
@@ -265,7 +264,6 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                   labelText: 'Количество воды',
                                   hintText: 'Например, 1500',
                                   suffixText: 'мл',
-                                  border: OutlineInputBorder(),
                                 ),
                                 validator: (text) {
                                   if (text == null || text.trim().isEmpty) {
@@ -284,9 +282,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                         ),
                         const SizedBox(height: 16),
                         AppCard(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               const _FieldTitle(
                                 icon: Icons.coffee_outlined,
                                 title: 'Сколько кофеина употребили?',
@@ -305,7 +303,6 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                   labelText: 'Количество кофеина',
                                   hintText: 'Например, 120',
                                   suffixText: 'мг',
-                                  border: OutlineInputBorder(),
                                 ),
                                 validator: (text) {
                                   if (text == null || text.trim().isEmpty) {

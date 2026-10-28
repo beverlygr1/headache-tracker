@@ -11,14 +11,27 @@ class AnalyticsApi {
 
   Future<Map<String, dynamic>> getSummary({
     String period = 'month',
+    String timeZone = 'UTC',
   }) async {
     final response = await _client.get<Map<String, dynamic>>(
       '/analytics/summary',
       queryParameters: {
         'period': period,
+        'time_zone': timeZone,
       },
     );
 
+    return response.data ?? <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> getIntensity({
+    String period = 'month',
+    String timeZone = 'UTC',
+  }) async {
+    final response = await _client.get<Map<String, dynamic>>(
+      '/analytics/intensity',
+      queryParameters: {'period': period, 'time_zone': timeZone},
+    );
     return response.data ?? <String, dynamic>{};
   }
 

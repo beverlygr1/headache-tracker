@@ -146,6 +146,7 @@ class _AuthGateState extends State<AuthGate> {
           diaryRepository: ApiDiaryRepository(widget.diaryApi),
           initialAction: _initialAction,
           userName: widget.authController.profile?.name,
+          timeZone: widget.authController.profile?.timeZone ?? 'UTC',
           userEmail: widget.authController.profile?.email,
           onLogout: widget.authController.logout,
         ),

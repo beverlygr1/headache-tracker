@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/utils/app_time_picker.dart';
 import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../domain/attack_draft.dart';
@@ -37,7 +38,15 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   bool _openingReview = false;
 
   final List<String> _painOptions = ['Лоб', 'Виски', 'Темя', 'Затылок'];
-  final List<String> _symptomOptions = ['Тошнота', 'Свет мешает'];
+  final List<String> _symptomOptions = [
+    'Тошнота',
+    'Свет мешает',
+    'Звук мешает',
+    'Головокружение',
+    'Слабость',
+    'Рвота',
+    'Нарушение зрения',
+  ];
   final List<String> _painTypeOptions = [
     'Пульсирующая',
     'Давящая',
@@ -45,7 +54,15 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     'Острая',
   ];
   final List<String> _medicationOptions = [];
-  final List<String> _reliefOptions = ['Отдых', 'Сон', 'Тишина', 'Вода'];
+  final List<String> _reliefOptions = [
+    'Отдых',
+    'Сон',
+    'Тишина',
+    'Вода',
+    'Тёмная комната',
+    'Прохладный компресс',
+    'Свежий воздух',
+  ];
 
   @override
   void initState() {
@@ -323,7 +340,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                       onSelected: (option) => setState(() {
                         _painType = _painType == option ? null : option;
                       }),
-                      onAdd: _addCustomPainType,
                     ),
                     const SizedBox(height: 14),
                     _ChoiceSection(
@@ -371,12 +387,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                       options: _reliefOptions,
                       selected: _reliefFactors,
                       onSelected: (option) => _toggle(_reliefFactors, option),
-                      onAdd: () => _addCustomOption(
-                        title: 'Добавить способ облегчения',
-                        options: _reliefOptions,
-                        selected: _reliefFactors,
-                        maxLength: 80,
-                      ),
                     ),
                   ],
                   const SizedBox(height: 20),
@@ -397,12 +407,10 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   }
 
   Future<void> _selectStartTime() async {
-    final result = await showTimePicker(
+    final result = await showAppTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_startTime),
       helpText: 'Время начала боли',
-      cancelText: 'Отмена',
-      confirmText: 'Готово',
     );
     if (result == null || !mounted) return;
     setState(() {
@@ -437,21 +445,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     setState(() {
       if (!options.contains(value)) options.add(value);
       selected.add(value);
-    });
-  }
-
-  Future<void> _addCustomPainType() async {
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => const _AddOptionDialog(
-        title: 'Добавить характер боли',
-        maxLength: 80,
-      ),
-    );
-    if (value == null || value.isEmpty || !mounted) return;
-    setState(() {
-      if (!_painTypeOptions.contains(value)) _painTypeOptions.add(value);
-      _painType = value;
     });
   }
 
@@ -599,7 +592,7 @@ class _ChoiceSection extends StatelessWidget {
     required this.options,
     required this.selected,
     required this.onSelected,
-    required this.onAdd,
+    this.onAdd,
     this.onOpenMap,
   });
 
@@ -607,7 +600,7 @@ class _ChoiceSection extends StatelessWidget {
   final List<String> options;
   final Set<String> selected;
   final ValueChanged<String> onSelected;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final VoidCallback? onOpenMap;
 
   @override
@@ -633,7 +626,8 @@ class _ChoiceSection extends StatelessWidget {
                   onPressed: onOpenMap,
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.blue,
-                    textStyle: const TextStyle(fontSize: 11),
+                    textStyle:
+                        const TextStyle(fontFamily: 'Onest', fontSize: 11),
                   ),
                   child: const Text('Выбрать на схеме'),
                 ),
@@ -646,6 +640,8 @@ class _ChoiceSection extends StatelessWidget {
             children: [
               for (final option in options)
                 ChoiceChip(
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   label: Text(option),
                   selected: selected.contains(option),
                   onSelected: (_) => onSelected(option),
@@ -662,18 +658,28 @@ class _ChoiceSection extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                 ),
-              ActionChip(
-                key: ValueKey('add-option-$title'),
-                avatar: const Icon(Icons.add_rounded, size: 18),
-                label: Text(options.isEmpty ? 'Добавить' : ''),
-                onPressed: onAdd,
-                backgroundColor: Colors.white,
-                side: const BorderSide(
-                  color: AppColors.blue,
-                  style: BorderStyle.solid,
+              if (onAdd != null)
+                ActionChip(
+                  tooltip:
+                      options.isEmpty ? 'Добавить' : 'Добавить свой вариант',
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  labelStyle: const TextStyle(
+                      fontFamily: 'Onest',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600),
+                  key: ValueKey('add-option-$title'),
+                  avatar: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(options.isEmpty ? 'Добавить' : ''),
+                  onPressed: onAdd,
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(
+                    color: AppColors.blue,
+                    style: BorderStyle.solid,
+                  ),
+                  shape: const StadiumBorder(),
                 ),
-                shape: const StadiumBorder(),
-              ),
             ],
           ),
         ],

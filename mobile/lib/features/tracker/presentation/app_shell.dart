@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
@@ -10,6 +12,8 @@ import '../../analytics/state/analytics_controller.dart';
 import '../../diary/data/daily_entry.dart';
 import '../../diary/data/diary_repository.dart';
 import '../../diary/presentation/daily_entry_page.dart';
+import '../../forecast/data/forecast_api.dart';
+import '../../forecast/state/forecast_controller.dart';
 import '../../onboarding/presentation/onboarding_page.dart';
 import '../../reminders/presentation/reminder_settings_page.dart';
 import '../../reminders/state/reminder_controller.dart';
@@ -33,6 +37,9 @@ class AppShell extends StatefulWidget {
     this.serverSettings,
     this.reminderController,
     this.analyticsController,
+    this.forecastController,
+    this.timeZone = 'UTC',
+    this.now,
     this.initialAction = OnboardingAction.today,
     super.key,
   });
@@ -43,6 +50,9 @@ class AppShell extends StatefulWidget {
   final DiaryRepository? diaryRepository;
   final ApiClient? apiClient;
   final AnalyticsController? analyticsController;
+  final ForecastController? forecastController;
+  final String timeZone;
+  final DateTime Function()? now;
   final OnboardingAction initialAction;
 
   /// Адрес сервера, который можно поменять из профиля. `null` в демо-режиме.
@@ -58,7 +68,11 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
+  DateTime get _now => widget.now?.call() ?? DateTime.now();
+  late DateTime _today;
+  Timer? _dayTimer;
+  ForecastController? _forecastController;
   int _selectedIndex = 0;
   late final DiaryRepository _diaryRepository;
   AnalyticsController? _analyticsController;
@@ -70,12 +84,22 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _diaryRepository = widget.diaryRepository ?? InMemoryDiaryRepository();
+    _today = DateUtils.dateOnly(_now);
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleDayChange();
+    _forecastController = widget.forecastController ??
+        (widget.apiClient == null
+            ? null
+            : ForecastController(ForecastApi(widget.apiClient!)));
+    _forecastController?.refresh();
 
     // Инициализация контроллера аналитики, если он передан или есть apiClient
     if (widget.analyticsController != null) {
       _analyticsController = widget.analyticsController;
     } else if (widget.apiClient != null) {
-      _analyticsController = AnalyticsController(AnalyticsApi(widget.apiClient!));
+      _analyticsController = AnalyticsController(
+          AnalyticsApi(widget.apiClient!),
+          timeZone: widget.timeZone);
     }
 
     widget.reminderController?.addListener(_onReminderChanged);
@@ -84,12 +108,40 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _dayTimer?.cancel();
+    if (widget.forecastController == null) _forecastController?.dispose();
     widget.reminderController?.removeListener(_onReminderChanged);
     // Освобождаем контроллер аналитики только если создавали его внутри
     if (widget.analyticsController == null) {
       _analyticsController?.dispose();
     }
     super.dispose();
+  }
+
+  void _scheduleDayChange() {
+    _dayTimer?.cancel();
+    final now = _now;
+    final nextDay = DateTime(now.year, now.month, now.day + 1);
+    _dayTimer = Timer(nextDay.difference(now), _checkDay);
+  }
+
+  void _checkDay() {
+    if (!mounted) return;
+    final today = DateUtils.dateOnly(_now);
+    if (today != _today) {
+      setState(() => _today = today);
+      _loadDiary();
+      _forecastController?.refresh();
+    }
+    _scheduleDayChange();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkDay();
+    }
   }
 
   Future<void> _initialize() async {
@@ -158,8 +210,8 @@ class _AppShellState extends State<AppShell> {
   Future<void> _openDailyEntry([DateTime? date]) async {
     final entry =
         await Navigator.of(context).push<DailyEntry>(MaterialPageRoute(
-      builder: (_) => DailyEntryPage(
-          repository: _diaryRepository, date: date ?? DateTime.now()),
+      builder: (_) =>
+          DailyEntryPage(repository: _diaryRepository, date: date ?? _now),
     ));
     if (entry == null || !mounted) return;
     setState(() {
@@ -170,6 +222,7 @@ class _AppShellState extends State<AppShell> {
     });
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Самочувствие сохранено')));
+    _forecastController?.refresh();
   }
 
   Future<void> _showOnboarding() async {
@@ -184,6 +237,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _refresh() async {
+    _checkDay();
+    _forecastController?.refresh();
     try {
       await widget.controller.load();
       if (!mounted) return;
@@ -300,6 +355,7 @@ class _AppShellState extends State<AppShell> {
 
     if (saved == true && mounted) {
       setState(() => _selectedIndex = 1);
+      _forecastController?.refresh();
     }
   }
 
@@ -312,9 +368,11 @@ class _AppShellState extends State<AppShell> {
         ),
       ),
     );
+    if (mounted) _forecastController?.refresh();
   }
 
   void _selectSection(int index) {
+    _checkDay();
     if (index <= 2) {
       setState(() => _selectedIndex = index);
       return;
@@ -355,6 +413,8 @@ class _AppShellState extends State<AppShell> {
             if (_selectedIndex == 0) {
               page = TodayPage(
                 key: const ValueKey('today'),
+                today: _today,
+                forecastController: _forecastController,
                 controller: widget.controller,
                 userName: widget.userName,
                 onProfileTap: _openProfile,
@@ -369,6 +429,7 @@ class _AppShellState extends State<AppShell> {
             } else if (_selectedIndex == 1) {
               page = DiaryPage(
                 key: const ValueKey('diary'),
+                today: _today,
                 controller: widget.controller,
                 onOpenAttack: _openDetails,
                 dailyEntries: _dailyEntries,
@@ -384,7 +445,8 @@ class _AppShellState extends State<AppShell> {
                 );
               } else {
                 page = const Center(
-                  child: Text('Контроллер аналитики не проинициализирован'),
+                  child:
+                      Text('Войдите в аккаунт, чтобы посмотреть статистику.'),
                 );
               }
             } else {

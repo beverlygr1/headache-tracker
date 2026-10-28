@@ -31,6 +31,8 @@ class IntensityPoint(BaseModel):
     total_attacks: int
     avg_intensity: float | None
     max_intensity: int | None
+    completed_attacks: int = 0
+    avg_duration_minutes: float | None = None
     diary_recorded: bool
     headache_present: bool | None
 
