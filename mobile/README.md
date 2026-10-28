@@ -41,7 +41,28 @@ lib/features/profile/data/user_profile.dart   модель профиля
 lib/features/tracker/data/attack_repository.dart  API ↔ доменная модель AttackRecord
 lib/features/tracker/state/tracker_controller.dart  загрузка, сохранение, ошибки
 lib/features/auth/state/auth_controller.dart   сессия, вход, регистрация, выход
+lib/features/forecast/data/forecast_api.dart   GET /forecast/risk
+lib/features/forecast/data/forecast_dto.dart   status и risk_level из ответа
+lib/features/forecast/state/forecast_controller.dart  загрузка прогноза, ошибки не показываются
 ```
+
+### Прогноз на экране «Сегодня»
+
+Карточка «Личный прогноз» берёт данные из `GET /forecast/risk`
+(`<API_BASE_URL>/forecast/risk`, адрес задаётся тем же `API_BASE_URL`).
+
+- Прогноз запрашивается, только если записано больше 3 приступов (4 и более).
+- Если ответ `status = ready`, заголовок карточки меняется на «Вероятность
+  приступа», а вместо текста показывается `risk_level` (если в строке нет
+  знака `%`, он добавляется).
+- Если `insufficient_data`, приступов 3 или меньше, а также при любой ошибке
+  (сеть, 503, неожиданный ответ) карточка не меняется и ошибка не показывается.
+  При `insufficient_data` ранее показанное число убирается.
+- Прогноз обновляется при открытии приложения, pull-to-refresh и после
+  сохранения приступа.
+- В демо-режиме (`DEMO_MODE`) запрос не выполняется, карточка прежняя.
+- Остальные поля ответа (`probability`, `factors`, `recommendations`,
+  `missing_fields`, `message`) клиент пока не использует.
 
 - Первая загрузка показывает индикатор, при ошибке — экран с кнопкой «Повторить».
 - Списки обновляются жестом pull-to-refresh.

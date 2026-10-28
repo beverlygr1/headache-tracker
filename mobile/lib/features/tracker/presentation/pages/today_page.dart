@@ -19,8 +19,16 @@ class TodayPage extends StatelessWidget {
     this.diaryError,
     this.onRetryDiary,
     this.userName,
+    this.riskLevel,
     super.key,
   });
+
+  /// `risk_level` из `/forecast/risk` (округлённый процент строкой).
+  /// `null` — прогноза нет или запрос не удался: карточка остаётся прежней.
+  final String? riskLevel;
+
+  /// Прогноз показывается, когда записано больше этого числа приступов.
+  static const minAttacksForForecast = 3;
 
   final TrackerController controller;
   final String? userName;
@@ -37,6 +45,11 @@ class TodayPage extends StatelessWidget {
     final today = DateTime.now();
     final name = userName?.trim() ?? '';
     final latest = controller.latestAttack;
+    final risk = riskLevel?.trim();
+    final forecastText =
+        risk != null && risk.isNotEmpty && controller.records.length > minAttacksForForecast
+            ? (risk.endsWith('%') ? risk : '$risk%')
+            : null;
     DailyEntry? todayEntry;
     for (final entry in dailyEntries) {
       if (RussianDate.isSameDay(entry.date, today)) todayEntry = entry;
@@ -129,17 +142,19 @@ class TodayPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.wb_sunny_outlined,
                           size: 18,
                           color: AppColors.blue,
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
-                          'ЛИЧНЫЙ ПРОГНОЗ',
-                          style: TextStyle(
+                          forecastText == null
+                              ? 'ЛИЧНЫЙ ПРОГНОЗ'
+                              : 'ВЕРОЯТНОСТЬ ПРИСТУПА',
+                          style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -149,26 +164,33 @@ class TodayPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 15),
-                    Text(
-                      latest == null && dailyEntries.isEmpty
-                          ? 'Начнём с наблюдений'
-                          : 'Ваш дневник пополняется',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 7),
-                    const Text(
-                      'Записывайте приступы и самочувствие. Личный прогноз появится на следующем этапе.',
-                      style: TextStyle(color: AppColors.muted, height: 1.45),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Сейчас доступны дневник и история',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                    if (forecastText != null)
+                      Text(
+                        forecastText,
+                        style: Theme.of(context).textTheme.headlineLarge,
+                      )
+                    else ...[
+                      Text(
+                        latest == null && dailyEntries.isEmpty
+                            ? 'Начнём с наблюдений'
+                            : 'Ваш дневник пополняется',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                    ),
+                      const SizedBox(height: 7),
+                      const Text(
+                        'Записывайте приступы и самочувствие. Личный прогноз появится на следующем этапе.',
+                        style: TextStyle(color: AppColors.muted, height: 1.45),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Сейчас доступны дневник и история',
+                        style: TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

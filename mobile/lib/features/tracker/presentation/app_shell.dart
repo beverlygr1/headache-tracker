@@ -10,6 +10,8 @@ import '../../analytics/state/analytics_controller.dart';
 import '../../diary/data/daily_entry.dart';
 import '../../diary/data/diary_repository.dart';
 import '../../diary/presentation/daily_entry_page.dart';
+import '../../forecast/data/forecast_api.dart';
+import '../../forecast/state/forecast_controller.dart';
 import '../../onboarding/presentation/onboarding_page.dart';
 import '../../reminders/presentation/reminder_settings_page.dart';
 import '../../reminders/state/reminder_controller.dart';
@@ -33,6 +35,7 @@ class AppShell extends StatefulWidget {
     this.serverSettings,
     this.reminderController,
     this.analyticsController,
+    this.forecastController,
     this.initialAction = OnboardingAction.today,
     super.key,
   });
@@ -43,6 +46,10 @@ class AppShell extends StatefulWidget {
   final DiaryRepository? diaryRepository;
   final ApiClient? apiClient;
   final AnalyticsController? analyticsController;
+
+  /// Прогноз риска. Если не передан, создаётся из [apiClient]; `null`
+  /// в демо-режиме — виджет прогноза остаётся прежним.
+  final ForecastController? forecastController;
   final OnboardingAction initialAction;
 
   /// Адрес сервера, который можно поменять из профиля. `null` в демо-режиме.
@@ -62,6 +69,7 @@ class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
   late final DiaryRepository _diaryRepository;
   AnalyticsController? _analyticsController;
+  ForecastController? _forecastController;
   List<DailyEntry> _dailyEntries = [];
   String? _diaryError;
   bool _openedInitialAction = false;
@@ -78,6 +86,13 @@ class _AppShellState extends State<AppShell> {
       _analyticsController = AnalyticsController(AnalyticsApi(widget.apiClient!));
     }
 
+    if (widget.forecastController != null) {
+      _forecastController = widget.forecastController;
+    } else if (widget.apiClient != null) {
+      _forecastController = ForecastController(ForecastApi(widget.apiClient!));
+    }
+    _forecastController?.addListener(_onForecastChanged);
+
     widget.reminderController?.addListener(_onReminderChanged);
     _initialize();
   }
@@ -85,6 +100,10 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     widget.reminderController?.removeListener(_onReminderChanged);
+    _forecastController?.removeListener(_onForecastChanged);
+    if (widget.forecastController == null) {
+      _forecastController?.dispose();
+    }
     // Освобождаем контроллер аналитики только если создавали его внутри
     if (widget.analyticsController == null) {
       _analyticsController?.dispose();
@@ -98,9 +117,26 @@ class _AppShellState extends State<AppShell> {
     }
     if (!mounted) return;
     await _loadDiary();
+    await _loadForecast();
     if (mounted && widget.controller.status == TrackerStatus.ready) {
       _openInitialAction();
     }
+  }
+
+  void _onForecastChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Прогноз запрашивается, только когда записано больше 3 приступов.
+  /// Ошибки не показываются: виджет остаётся как был.
+  Future<void> _loadForecast() async {
+    final forecast = _forecastController;
+    if (forecast == null || !mounted) return;
+    if (widget.controller.status != TrackerStatus.ready ||
+        widget.controller.records.length <= _minAttacksForForecast) {
+      return;
+    }
+    await forecast.load();
   }
 
   void _openInitialAction() {
@@ -188,6 +224,7 @@ class _AppShellState extends State<AppShell> {
       await widget.controller.load();
       if (!mounted) return;
       await _loadDiary();
+      await _loadForecast();
       if (_selectedIndex == 2 && _analyticsController != null) {
         await _analyticsController!.loadAnalytics();
       }
@@ -300,6 +337,7 @@ class _AppShellState extends State<AppShell> {
 
     if (saved == true && mounted) {
       setState(() => _selectedIndex = 1);
+      await _loadForecast();
     }
   }
 
@@ -365,6 +403,7 @@ class _AppShellState extends State<AppShell> {
                 dailyEntries: _dailyEntries,
                 diaryError: _diaryError,
                 onRetryDiary: _loadDiary,
+                riskLevel: _forecastController?.value,
               );
             } else if (_selectedIndex == 1) {
               page = DiaryPage(
@@ -415,5 +454,8 @@ class _AppShellState extends State<AppShell> {
     );
   }
 }
+
+/// Прогноз показывается, когда приступов больше этого числа.
+const _minAttacksForForecast = 3;
 
 enum _ProfileAction { onboarding, reminder, server, logout }
