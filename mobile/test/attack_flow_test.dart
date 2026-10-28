@@ -31,7 +31,9 @@ void main() {
       (tester) async {
     _size(tester);
     await tester.pumpWidget(const HeadacheTrackerApp(home: PainZonesPage()));
-    expect(find.text('Пока ничего не выбрано'), findsOneWidget);
+    // Схема с новыми зонами выше экрана: сводка выбора внизу, под прокруткой.
+    expect(find.text('Пока ничего не выбрано', skipOffstage: false),
+        findsOneWidget);
     expect(_action(tester, 'Продолжить').onPressed, isNull);
     await tester.tap(find.byKey(const ValueKey('pain-zone-forehead')));
     await tester.pump();
@@ -39,14 +41,14 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('pain-zone-occiput')));
     await tester.pump();
-    expect(find.byKey(const ValueKey('selected-zone-Лоб')), findsOneWidget);
-    expect(find.byKey(const ValueKey('selected-zone-Затылок')), findsOneWidget);
+    expect(_selectedZone('Лоб'), findsOneWidget);
+    expect(_selectedZone('Затылок'), findsOneWidget);
     await tester.tap(find.text('Спереди'));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('pain-zone-forehead')));
     await tester.pump();
-    expect(find.byKey(const ValueKey('selected-zone-Лоб')), findsNothing);
-    expect(find.byKey(const ValueKey('selected-zone-Затылок')), findsOneWidget);
+    expect(_selectedZone('Лоб'), findsNothing);
+    expect(_selectedZone('Затылок'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -413,6 +415,9 @@ void main() {
     }
   });
 }
+
+Finder _selectedZone(String zone) =>
+    find.byKey(ValueKey('selected-zone-$zone'), skipOffstage: false);
 
 void _size(WidgetTester tester, [Size size = const Size(390, 844)]) {
   tester.view.physicalSize = size;

@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../domain/pain_zones.dart';
 
 enum HeadView { front, back }
 
-/// An interactive Flutter schematic; replace its artwork when Figma source
-/// assets are available. Coordinates are independent of the display size.
+/// Интерактивная схема головы. Координаты заданы в системе 240×286 и не
+/// зависят от размера экрана.
 class PainHeadMap extends StatelessWidget {
   const PainHeadMap({
     required this.view,
@@ -19,15 +20,18 @@ class PainHeadMap extends StatelessWidget {
   final Set<String> selectedZones;
   final ValueChanged<String> onToggle;
 
+  static const _width = 240.0;
+  static const _height = 286.0;
+
   @override
   Widget build(BuildContext context) {
-    final regions = _regions(view);
+    final regions = _regionsFor(view);
     return AspectRatio(
-      aspectRatio: 240 / 286,
+      aspectRatio: _width / _height,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final scaleX = constraints.maxWidth / 240;
-          final scaleY = constraints.maxHeight / 286;
+          final scaleX = constraints.maxWidth / _width;
+          final scaleY = constraints.maxHeight / _height;
           return Stack(
             children: [
               Positioned.fill(
@@ -38,16 +42,17 @@ class PainHeadMap extends StatelessWidget {
               for (final region in regions)
                 Positioned.fromRect(
                   rect: Rect.fromLTRB(
-                    region.path.getBounds().left * scaleX,
-                    region.path.getBounds().top * scaleY,
-                    region.path.getBounds().right * scaleX,
-                    region.path.getBounds().bottom * scaleY,
+                    region.bounds.left * scaleX,
+                    region.bounds.top * scaleY,
+                    region.bounds.right * scaleX,
+                    region.bounds.bottom * scaleY,
                   ),
                   child: Semantics(
                     button: true,
                     selected: selectedZones.contains(region.zone),
-                    label: region.accessibleLabel,
+                    label: region.zone,
                     hint: 'Нажмите, чтобы выбрать или убрать зону боли',
+                    // Нажатие засчитывается только внутри формы области.
                     child: ClipPath(
                       clipper: _RegionClipper(region.path),
                       child: Material(
@@ -70,67 +75,141 @@ class PainHeadMap extends StatelessWidget {
 }
 
 class _HeadRegion {
-  const _HeadRegion(this.id, this.zone, this.accessibleLabel, this.path);
+  _HeadRegion(this.id, this.zone, this.path) : bounds = path.getBounds();
 
   final String id;
   final String zone;
-  final String accessibleLabel;
   final Path path;
+  final Rect bounds;
 }
 
-List<_HeadRegion> _regions(HeadView view) {
-  final crown = Path()
-    ..moveTo(58, 86)
-    ..lineTo(58, 78)
-    ..cubicTo(58, 43, 82, 28, 120, 28)
-    ..cubicTo(158, 28, 182, 43, 182, 78)
-    ..lineTo(182, 86)
-    ..quadraticBezierTo(120, 96, 58, 86)
-    ..close();
+Path _intersect(Path a, Path b) => Path.combine(PathOperation.intersect, a, b);
+Path _minus(Path a, Path b) => Path.combine(PathOperation.difference, a, b);
 
+Path _frontHead() => Path()
+  ..moveTo(120, 24)
+  ..cubicTo(84, 24, 60, 46, 59, 84)
+  ..cubicTo(58, 108, 60, 130, 66, 148)
+  ..cubicTo(75, 176, 96, 204, 120, 206)
+  ..cubicTo(144, 204, 165, 176, 174, 148)
+  ..cubicTo(180, 130, 182, 108, 181, 84)
+  ..cubicTo(180, 46, 156, 24, 120, 24)
+  ..close();
+
+Path _backHead() => Path()
+  ..moveTo(120, 24)
+  ..cubicTo(84, 24, 60, 46, 59, 86)
+  ..cubicTo(58, 124, 66, 160, 86, 182)
+  ..quadraticBezierTo(120, 200, 154, 182)
+  ..cubicTo(174, 160, 182, 124, 181, 86)
+  ..cubicTo(180, 46, 156, 24, 120, 24)
+  ..close();
+
+/// Верх головы одинаков на обоих видах: выбор «Темя» виден и спереди, и сзади.
+Path _crownOf(Path head) => _intersect(
+      head,
+      Path()
+        ..moveTo(0, 0)
+        ..lineTo(240, 0)
+        ..lineTo(240, 48)
+        ..quadraticBezierTo(120, 66, 0, 48)
+        ..close(),
+    );
+
+Rect _eye(double centerX) =>
+    Rect.fromCenter(center: Offset(centerX, 117), width: 30, height: 18);
+
+final _regionCache = <HeadView, List<_HeadRegion>>{};
+
+List<_HeadRegion> _regionsFor(HeadView view) =>
+    _regionCache.putIfAbsent(view, () => _buildRegions(view));
+
+List<_HeadRegion> _buildRegions(HeadView view) {
   if (view == HeadView.back) {
+    final head = _backHead();
+    final crown = _crownOf(head);
+    final neck = _minus(
+      Path()
+        ..moveTo(98, 176)
+        ..lineTo(142, 176)
+        ..lineTo(146, 238)
+        ..quadraticBezierTo(120, 246, 94, 238)
+        ..close(),
+      head,
+    );
     return [
-      _HeadRegion('crown', 'Темя', 'Темя', crown),
-      _HeadRegion(
-        'occiput',
-        'Затылок',
-        'Затылок',
-        Path()
-          ..moveTo(62, 108)
-          ..quadraticBezierTo(120, 120, 178, 108)
-          ..cubicTo(178, 158, 150, 205, 120, 205)
-          ..cubicTo(90, 205, 62, 158, 62, 108)
-          ..close(),
-      ),
+      _HeadRegion('crown', PainZones.crown, crown),
+      _HeadRegion('occiput', PainZones.occiput, _minus(head, crown)),
+      _HeadRegion('neck', PainZones.neck, neck),
     ];
   }
 
-  return [
-    _HeadRegion('forehead', 'Лоб', 'Лоб', crown),
-    _HeadRegion(
-      'left-temple',
-      'Виски',
-      'Виски, слева на схеме',
+  final head = _frontHead();
+  final crown = _crownOf(head);
+  final forehead = _minus(
+    _intersect(
+      head,
       Path()
-        ..moveTo(58, 90)
-        ..lineTo(80, 94)
-        ..lineTo(77, 153)
-        ..lineTo(66, 163)
-        ..quadraticBezierTo(56, 133, 58, 90)
+        ..moveTo(84, 30)
+        ..lineTo(156, 30)
+        ..lineTo(156, 96)
+        ..quadraticBezierTo(120, 104, 84, 96)
         ..close(),
     ),
+    crown,
+  );
+  Path temple(List<Offset> points) {
+    final raw = Path()..addPolygon(points, true);
+    return _minus(_minus(_intersect(head, raw), crown), forehead);
+  }
+
+  final eyes = Path()
+    ..addOval(_eye(100))
+    ..addOval(_eye(140));
+  final sinuses = _minus(
+    _minus(
+      _intersect(
+        head,
+        Path()
+          ..addRRect(
+              RRect.fromLTRBR(86, 106, 154, 160, const Radius.circular(16))),
+      ),
+      eyes,
+    ),
+    forehead,
+  );
+
+  return [
+    _HeadRegion('crown', PainZones.crown, crown),
+    _HeadRegion('forehead', PainZones.forehead, forehead),
+    // Вид спереди: правая сторона пациента — слева на схеме.
     _HeadRegion(
       'right-temple',
-      'Виски',
-      'Виски, справа на схеме',
-      Path()
-        ..moveTo(182, 90)
-        ..lineTo(160, 94)
-        ..lineTo(163, 153)
-        ..lineTo(174, 163)
-        ..quadraticBezierTo(184, 133, 182, 90)
-        ..close(),
+      PainZones.rightTemple,
+      temple(const [
+        Offset(0, 40),
+        Offset(84, 52),
+        Offset(84, 96),
+        Offset(78, 140),
+        Offset(0, 150),
+      ]),
     ),
+    _HeadRegion(
+      'left-temple',
+      PainZones.leftTemple,
+      temple(const [
+        Offset(240, 40),
+        Offset(156, 52),
+        Offset(156, 96),
+        Offset(162, 140),
+        Offset(240, 150),
+      ]),
+    ),
+    // Мелкие зоны идут последними — поверх крупных: нажатие в глаз всегда
+    // достаётся глазу, а не окружающим пазухам с вырезом под него.
+    _HeadRegion('sinuses', PainZones.sinuses, sinuses),
+    _HeadRegion('right-eye', PainZones.rightEye, Path()..addOval(_eye(100))),
+    _HeadRegion('left-eye', PainZones.leftEye, Path()..addOval(_eye(140))),
   ];
 }
 
@@ -143,15 +222,27 @@ class _RegionClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final bounds = path.getBounds();
     return path.shift(-bounds.topLeft).transform(Float64List.fromList([
-      size.width / bounds.width, 0, 0, 0,
-      0, size.height / bounds.height, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1,
-    ]));
+          size.width / bounds.width,
+          0,
+          0,
+          0,
+          0,
+          size.height / bounds.height,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+        ]));
   }
 
   @override
-  bool shouldReclip(_RegionClipper oldClipper) => true;
+  bool shouldReclip(_RegionClipper oldClipper) => oldClipper.path != path;
 }
 
 class _HeadPainter extends CustomPainter {
@@ -161,99 +252,138 @@ class _HeadPainter extends CustomPainter {
   final HeadView view;
   final Set<String> selected;
 
-  static const _fill = Color(0xFFDDE7F2);
-  static const _outline = Color(0xFFAFBFD1);
+  static const _skin = Color(0xFFE6EEF7);
+  static const _region = Color(0xFFD3E1F0);
+  static const _selected = Color(0xE63D8BF2);
+  // «Вся голова»: светло-синяя заливка всей головы, отдельные зоны ярче.
+  static const _wholeHeadSkin = Color(0xFFC6DCFA);
+  static const _wholeHeadRegion = Color(0xFFA7C9F7);
+  static const _outline = Color(0xFF9FB3CA);
+  static const _feature = Color(0xD96F84A0);
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
-    canvas.scale(size.width / 240, size.height / 286);
+    canvas.scale(
+        size.width / PainHeadMap._width, size.height / PainHeadMap._height);
+
     final outline = Paint()
       ..color = _outline
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
+    final separator = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeJoin = StrokeJoin.round;
+    final feature = Paint()
+      ..color = _feature
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
 
+    // Тень и плечи.
     canvas.drawOval(
       const Rect.fromLTWH(25, 270, 190, 12),
       Paint()..color = const Color(0xFFF0F3F8),
     );
     final shoulders = Path()
       ..moveTo(31, 272)
-      ..quadraticBezierTo(37, 251, 95, 242)
-      ..lineTo(97, 191)
-      ..lineTo(143, 191)
-      ..lineTo(145, 242)
-      ..quadraticBezierTo(203, 251, 209, 272)
+      ..quadraticBezierTo(37, 250, 92, 240)
+      ..lineTo(98, 186)
+      ..lineTo(142, 186)
+      ..lineTo(148, 240)
+      ..quadraticBezierTo(203, 250, 209, 272)
       ..close();
-    canvas.drawPath(shoulders, Paint()..color = _fill);
+    canvas.drawPath(shoulders, Paint()..color = _skin);
     canvas.drawPath(shoulders, outline);
 
-    for (final ear in [
-      const Rect.fromLTWH(49, 107, 17, 45),
-      const Rect.fromLTWH(174, 107, 17, 45),
+    for (final ear in const [
+      Rect.fromLTWH(47, 98, 16, 42),
+      Rect.fromLTWH(177, 98, 16, 42),
     ]) {
-      canvas.drawOval(ear, Paint()..color = _fill);
+      canvas.drawOval(ear, Paint()..color = _skin);
       canvas.drawOval(ear, outline);
     }
 
-    final head = Path()
-      ..moveTo(120, 28)
-      ..cubicTo(82, 28, 58, 43, 58, 78)
-      ..lineTo(58, 99)
-      ..cubicTo(55, 135, 70, 172, 92, 193)
-      ..quadraticBezierTo(120, 217, 148, 193)
-      ..cubicTo(170, 172, 185, 135, 182, 99)
-      ..lineTo(182, 78)
-      ..cubicTo(182, 43, 158, 28, 120, 28)
-      ..close();
-    canvas.drawPath(head, Paint()..color = _fill);
-    for (final region in _regions(view)) {
+    final whole = selected.contains(PainZones.wholeHead);
+    final head = view == HeadView.front ? _frontHead() : _backHead();
+    canvas.drawPath(head, Paint()..color = whole ? _wholeHeadSkin : _skin);
+
+    for (final region in _regionsFor(view)) {
+      final isSelected = selected.contains(region.zone);
       canvas.drawPath(
         region.path,
         Paint()
-          ..color = selected.contains(region.zone)
-              ? AppColors.blue
-              : const Color(0xFFD3E0EE),
+          ..color = isSelected
+              ? _selected
+              : whole
+                  ? _wholeHeadRegion
+                  : _region,
       );
-      canvas.drawPath(region.path, outline);
+      canvas.drawPath(region.path, separator);
     }
     canvas.drawPath(head, outline);
 
     if (view == HeadView.front) {
-      final features = Path()
-        ..moveTo(82, 110)
-        ..quadraticBezierTo(94, 103, 107, 109)
-        ..moveTo(133, 109)
-        ..quadraticBezierTo(146, 103, 158, 110)
-        ..moveTo(85, 121)
-        ..quadraticBezierTo(96, 116, 106, 121)
-        ..moveTo(134, 121)
-        ..quadraticBezierTo(144, 116, 155, 121)
-        ..moveTo(120, 118)
-        ..lineTo(115, 148)
-        ..quadraticBezierTo(120, 153, 126, 148)
-        ..moveTo(105, 168)
-        ..quadraticBezierTo(120, 175, 135, 168)
-        ..moveTo(113, 178)
-        ..quadraticBezierTo(120, 181, 127, 178);
-      canvas.drawPath(features, outline);
+      final face = Path()
+        // брови
+        ..moveTo(86, 104)
+        ..quadraticBezierTo(99, 98, 112, 103)
+        ..moveTo(128, 103)
+        ..quadraticBezierTo(141, 98, 154, 104)
+        // глаза
+        ..moveTo(91, 118)
+        ..quadraticBezierTo(100, 112, 109, 118)
+        ..moveTo(131, 118)
+        ..quadraticBezierTo(140, 112, 149, 118)
+        // нос
+        ..moveTo(120, 112)
+        ..lineTo(115, 146)
+        ..quadraticBezierTo(120, 151, 126, 146)
+        // рот
+        ..moveTo(106, 172)
+        ..quadraticBezierTo(120, 179, 134, 172);
+      canvas.drawPath(face, feature);
     } else {
-      final backLines = Path()
-        ..moveTo(79, 104)
-        ..quadraticBezierTo(74, 151, 99, 182)
-        ..moveTo(161, 104)
-        ..quadraticBezierTo(166, 151, 141, 182)
-        ..moveTo(101, 219)
-        ..quadraticBezierTo(120, 225, 139, 219);
-      canvas.drawPath(backLines, outline);
+      final back = Path()
+        // линия роста волос и позвоночник
+        ..moveTo(78, 150)
+        ..quadraticBezierTo(120, 168, 162, 150)
+        ..moveTo(120, 196)
+        ..lineTo(120, 236);
+      canvas.drawPath(back, feature);
     }
+
+    // Стороны пациента: спереди его правая сторона слева на схеме.
+    final leftLabel = view == HeadView.front ? 'П' : 'Л';
+    final rightLabel = view == HeadView.front ? 'Л' : 'П';
+    _drawSide(canvas, leftLabel, const Offset(26, 112));
+    _drawSide(canvas, rightLabel, const Offset(214, 112));
+
     canvas.restore();
+  }
+
+  void _drawSide(Canvas canvas, String text, Offset center) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: const TextStyle(
+          color: AppColors.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      center - Offset(painter.width / 2, painter.height / 2),
+    );
   }
 
   @override
   bool shouldRepaint(_HeadPainter oldDelegate) =>
-      oldDelegate.view != view ||
-      !setEquals(oldDelegate.selected, selected);
+      oldDelegate.view != view || !setEquals(oldDelegate.selected, selected);
 }

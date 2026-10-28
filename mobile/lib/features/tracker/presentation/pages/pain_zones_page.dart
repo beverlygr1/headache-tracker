@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../domain/pain_zones.dart';
 import '../widgets/common.dart';
 import '../widgets/pain_head_map.dart';
 
@@ -93,7 +94,8 @@ class _PainZonesPageState extends State<PainZonesPage> {
                                         ? 'Спереди'
                                         : 'Сзади',
                                     selected: _view == view,
-                                    onPressed: () => setState(() => _view = view),
+                                    onPressed: () =>
+                                        setState(() => _view = view),
                                   ),
                                 ),
                             ],
@@ -102,7 +104,7 @@ class _PainZonesPageState extends State<PainZonesPage> {
                         const SizedBox(height: 16),
                         Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 240),
+                            constraints: const BoxConstraints(maxWidth: 220),
                             child: PainHeadMap(
                               view: _view,
                               selectedZones: _selected,
@@ -110,23 +112,39 @@ class _PainZonesPageState extends State<PainZonesPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
+                        const Center(
+                          child: Text(
+                            'П и Л — ваши правая и левая стороны',
+                            style:
+                                TextStyle(color: AppColors.muted, fontSize: 10),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         const Text(
-                          'Доступные зоны',
-                          style: TextStyle(color: AppColors.muted, fontSize: 10),
+                          'Зоны на схеме',
+                          style:
+                              TextStyle(color: AppColors.muted, fontSize: 10),
                         ),
                         const SizedBox(height: 6),
                         Wrap(
                           spacing: 8,
+                          runSpacing: 6,
                           children: [
-                            for (final zone in _view == HeadView.front
-                                ? const ['Лоб', 'Виски']
-                                : const ['Темя', 'Затылок'])
+                            for (final zone in [
+                              ...(_view == HeadView.front
+                                  ? PainZones.front
+                                  : PainZones.back),
+                              PainZones.wholeHead,
+                            ])
                               ChoiceChip(
                                 label: Text(zone),
                                 selected: _selected.contains(zone),
                                 onSelected: (_) => _toggle(zone),
                                 showCheckmark: false,
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
                                 selectedColor: AppColors.blueSoft,
                                 backgroundColor: const Color(0xFFF0F3F8),
                                 side: BorderSide.none,

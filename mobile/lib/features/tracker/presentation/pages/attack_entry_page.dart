@@ -8,6 +8,7 @@ import '../../../attacks/data/medications_api.dart';
 import '../../../attacks/presentation/widgets/medication_selector.dart';
 import '../../domain/attack_draft.dart';
 import '../../domain/attack_record.dart';
+import '../../domain/pain_zones.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
 import 'attack_review_page.dart';
@@ -41,7 +42,15 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   bool _openingMap = false;
   bool _openingReview = false;
 
-  final List<String> _painOptions = ['Лоб', 'Виски', 'Темя', 'Затылок'];
+  // Частые зоны для быстрой записи; остальные — на схеме головы.
+  final List<String> _painOptions = [
+    PainZones.forehead,
+    PainZones.rightTemple,
+    PainZones.leftTemple,
+    PainZones.crown,
+    PainZones.occiput,
+    PainZones.wholeHead,
+  ];
   final List<String> _symptomOptions = [
     'Тошнота',
     'Свет мешает',
