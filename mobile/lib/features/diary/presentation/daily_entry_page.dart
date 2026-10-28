@@ -242,83 +242,10 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                               setState(() => _sleepQuality = value),
                         ),
                         const SizedBox(height: 16),
-                        AppCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const _FieldTitle(
-                                icon: Icons.water_drop_outlined,
-                                title: 'Сколько воды выпили?',
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                key: const ValueKey('water-field'),
-                                controller: _water,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) => FocusManager
-                                    .instance.primaryFocus
-                                    ?.unfocus(),
-                                decoration: const InputDecoration(
-                                  labelText: 'Количество воды',
-                                  hintText: 'Например, 1500',
-                                  suffixText: 'мл',
-                                ),
-                                validator: (text) {
-                                  if (text == null || text.trim().isEmpty) {
-                                    return null;
-                                  }
-                                  final value = int.tryParse(text.trim());
-                                  return value == null ||
-                                          value < 0 ||
-                                          value > 2147483647
-                                      ? 'Введите целое неотрицательное число'
-                                      : null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
+                        WaterTrackerCard(controller: _water, enabled: !_saving),
                         const SizedBox(height: 16),
-                        AppCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const _FieldTitle(
-                                icon: Icons.coffee_outlined,
-                                title: 'Сколько кофеина употребили?',
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                key: const ValueKey('caffeine-field'),
-                                controller: _caffeine,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) => FocusManager
-                                    .instance.primaryFocus
-                                    ?.unfocus(),
-                                decoration: const InputDecoration(
-                                  labelText: 'Количество кофеина',
-                                  hintText: 'Например, 120',
-                                  suffixText: 'мг',
-                                ),
-                                validator: (text) {
-                                  if (text == null || text.trim().isEmpty) {
-                                    return null;
-                                  }
-                                  final value = int.tryParse(text.trim());
-                                  return value == null ||
-                                          value < 0 ||
-                                          value > 2147483647
-                                      ? 'Введите целое неотрицательное число'
-                                      : null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
+                        CaffeineTrackerCard(
+                            controller: _caffeine, enabled: !_saving),
                         const SizedBox(height: 16),
                         _RatingCard(
                           title: 'Насколько напряжённым был день?',
@@ -450,4 +377,152 @@ class _RatingCard extends StatelessWidget {
           ],
         ),
       );
+}
+
+class WaterTrackerCard extends StatelessWidget {
+  const WaterTrackerCard(
+      {super.key, required this.controller, this.enabled = true});
+  final TextEditingController controller;
+  final bool enabled;
+  @override
+  Widget build(BuildContext context) => _QuantityTrackerCard(
+      title: 'Сколько воды выпили?',
+      label: 'Количество воды',
+      hint: 'Для быстрого ввода: один стакан — 250 мл.',
+      prefix: 'water',
+      icon: Icons.water_drop_outlined,
+      unit: 'мл',
+      step: 250,
+      presets: const [250, 500, 1000, 1500, 2000],
+      controller: controller,
+      enabled: enabled);
+}
+
+class CaffeineTrackerCard extends StatelessWidget {
+  const CaffeineTrackerCard(
+      {super.key, required this.controller, this.enabled = true});
+  final TextEditingController controller;
+  final bool enabled;
+  @override
+  Widget build(BuildContext context) => _QuantityTrackerCard(
+      title: 'Сколько кофеина употребили?',
+      label: 'Количество кофеина',
+      hint:
+          'Быстрый ввод: условная чашка — 100 мг. Точное количество можно указать вручную.',
+      prefix: 'caffeine',
+      icon: Icons.coffee_outlined,
+      unit: 'мг',
+      step: 100,
+      presets: const [0, 50, 100, 200],
+      controller: controller,
+      enabled: enabled);
+}
+
+class _QuantityTrackerCard extends StatelessWidget {
+  const _QuantityTrackerCard(
+      {required this.title,
+      required this.label,
+      required this.hint,
+      required this.prefix,
+      required this.icon,
+      required this.unit,
+      required this.step,
+      required this.presets,
+      required this.controller,
+      required this.enabled});
+  final String title, label, hint, prefix, unit;
+  final IconData icon;
+  final int step;
+  final List<int> presets;
+  final TextEditingController controller;
+  final bool enabled;
+  static const _max = 2147483647;
+
+  void _set(int value) {
+    controller.value = TextEditingValue(
+        text: '$value',
+        selection: TextSelection.collapsed(offset: '$value'.length));
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<
+          TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, text, _) {
+        final current = int.tryParse(text.text.trim());
+        final valid = text.text.trim().isEmpty ||
+            current != null && current >= 0 && current <= _max;
+        return AppCard(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _FieldTitle(icon: icon, title: title),
+          const SizedBox(height: 10),
+          Text(hint,
+              style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+          const SizedBox(height: 14),
+          TextFormField(
+            key: ValueKey('$prefix-field'),
+            controller: controller,
+            enabled: enabled,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) =>
+                FocusManager.instance.primaryFocus?.unfocus(),
+            decoration: InputDecoration(
+                labelText: label, suffixText: unit, hintText: 'Не указано'),
+            validator: (text) {
+              if (text == null || text.trim().isEmpty) return null;
+              final number = int.tryParse(text.trim());
+              return number == null || number < 0 || number > _max
+                  ? 'Введите целое неотрицательное число'
+                  : null;
+            },
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                IconButton.filledTonal(
+                    key: ValueKey('$prefix-decrease'),
+                    tooltip: 'Уменьшить на $step $unit',
+                    onPressed: enabled && valid && (current ?? 0) > 0
+                        ? () => _set(((current ?? 0) - step).clamp(0, _max))
+                        : null,
+                    icon: const Icon(Icons.remove_rounded)),
+                Text('$step $unit',
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600)),
+                IconButton.filledTonal(
+                    key: ValueKey('$prefix-increase'),
+                    tooltip: 'Добавить $step $unit',
+                    onPressed: enabled && valid && (current ?? 0) <= _max - step
+                        ? () => _set((current ?? 0) + step)
+                        : null,
+                    icon: const Icon(Icons.add_rounded)),
+                TextButton(
+                    key: ValueKey('clear-$prefix'),
+                    onPressed: enabled && text.text.isNotEmpty
+                        ? controller.clear
+                        : null,
+                    child: const Text('Очистить')),
+              ]),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, runSpacing: 6, children: [
+            for (final preset in presets)
+              ChoiceChip(
+                  key: ValueKey('$prefix-preset-$preset'),
+                  label: Text('$preset $unit'),
+                  selected: current == preset,
+                  onSelected: enabled ? (_) => _set(preset) : null,
+                  selectedColor: AppColors.blueSoft,
+                  showCheckmark: false,
+                  labelStyle:
+                      const TextStyle(fontFamily: 'Onest', fontSize: 11),
+                  side: BorderSide.none,
+                  backgroundColor: AppColors.background),
+          ]),
+        ]));
+      });
 }

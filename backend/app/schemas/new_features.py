@@ -1,11 +1,20 @@
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # --- Аптечка ---
 class MedicationCreate(BaseModel):
-    name: str = Field(..., max_length=120, description="Название препарата")
-    dosage: str = Field(..., max_length=50, description="Дозировка (например, '200 мг')")
+    name: str = Field(..., min_length=1, max_length=120, description="Название препарата")
+    dosage: str = Field(default="", max_length=50, description="Дозировка, если указана пользователем")
+
+
+    @field_validator("name")
+    @classmethod
+    def valid_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Укажите название препарата")
+        return value
 
 
 class MedicationResponse(BaseModel):

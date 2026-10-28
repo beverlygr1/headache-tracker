@@ -157,12 +157,10 @@ void main() {
     final nausea = find.widgetWithText(ChoiceChip, 'Тошнота');
     await _reveal(tester, nausea);
     expect(tester.widget<ChoiceChip>(nausea).selected, isFalse);
-    final addMedication = find.byKey(const ValueKey('add-option-Препараты'));
-    await _reveal(tester, addMedication);
-    await tester.tap(addMedication);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Ибупрофен');
-    await tester.tap(find.widgetWithText(FilledButton, 'Добавить'));
+    final medicationOption =
+        find.byKey(const ValueKey('medication-option-Ибупрофен'));
+    await _reveal(tester, medicationOption);
+    await tester.tap(medicationOption);
     await tester.pumpAndSettle();
     final rest = find.widgetWithText(ChoiceChip, 'Отдых');
     await _reveal(tester, rest);
@@ -218,13 +216,18 @@ void main() {
     await tester.tap(find.text('Начать'));
     await tester.pumpAndSettle();
 
-    for (final label in ['Пульсирующая', 'Ибупрофен', 'Отдых']) {
+    for (final label in ['Пульсирующая', 'Отдых']) {
       final chip = find.widgetWithText(ChoiceChip, label);
       await _reveal(tester, chip);
       expect(tester.widget<ChoiceChip>(chip).selected, isTrue);
       await tester.tap(chip);
       await tester.pump();
     }
+    final medicationChip =
+        find.byKey(const ValueKey('selected-medication-Ибупрофен'));
+    await _reveal(tester, medicationChip);
+    tester.widget<InputChip>(medicationChip).onDeleted!();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Продолжить'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Сохранить приступ'));
@@ -419,7 +422,8 @@ void _size(WidgetTester tester, [Size size = const Size(390, 844)]) {
 }
 
 Future<void> _reveal(WidgetTester tester, Finder target) async {
-  await tester.scrollUntilVisible(target, 180);
+  await tester.scrollUntilVisible(target, 180,
+      scrollable: find.byType(Scrollable).first);
   await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
   await tester.pumpAndSettle();
 }

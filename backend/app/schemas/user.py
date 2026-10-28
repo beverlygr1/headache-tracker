@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserProfileResponse(BaseModel):
@@ -21,6 +21,17 @@ class UserProfileUpdateRequest(BaseModel):
     time_zone: str | None = Field(None, max_length=64)
     gender: str | None = Field(None, max_length=32)
     birth_date: date | None = None
+
+
+    @field_validator("name")
+    @classmethod
+    def valid_name(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("Укажите имя")
+        value = value.strip()
+        if not value:
+            raise ValueError("Укажите имя")
+        return value
 
 
 class OnboardingUpdateRequest(BaseModel):

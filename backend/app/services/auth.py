@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import TokenDecodeError, create_access_token, create_refresh_token, decode_token, hash_password, verify_password
+from app.core.security import TokenDecodeError, create_access_token, create_refresh_token, decode_session_token, hash_password, verify_password
 from app.repositories import users as user_repo
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 
@@ -21,15 +21,28 @@ def login(db: Session, data: LoginRequest) -> TokenResponse:
     user = user_repo.get_user_by_email(db, str(data.email))
     if user is None or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
-    return TokenResponse(access_token=create_access_token(user.id), refresh_token=create_refresh_token(user.id))
+    return TokenResponse(access_token=create_access_token(user.id, user.token_version), refresh_token=create_refresh_token(user.id, user.token_version))
 
 
 def refresh(db: Session, refresh_token: str) -> TokenResponse:
     try:
-        user_id = decode_token(refresh_token, "refresh")
+        user_id, version = decode_session_token(refresh_token, "refresh")
     except TokenDecodeError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     user = user_repo.get_user_by_id(db, user_id)
-    if user is None:
+    if user is None or user.token_version != version:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Пользователь не найден")
-    return TokenResponse(access_token=create_access_token(user.id), refresh_token=create_refresh_token(user.id))
+    return TokenResponse(access_token=create_access_token(user.id, user.token_version), refresh_token=create_refresh_token(user.id, user.token_version))
+
+
+def change_password(db: Session, user, current_password: str, new_password: str) -> TokenResponse:
+    db.refresh(user, with_for_update=True)
+    if not verify_password(current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Текущий пароль указан неверно")
+    user.password_hash = hash_password(new_password)
+    user.token_version += 1
+    db.commit()
+    return TokenResponse(
+        access_token=create_access_token(user.id, user.token_version),
+        refresh_token=create_refresh_token(user.id, user.token_version),
+    )

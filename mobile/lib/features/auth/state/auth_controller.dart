@@ -94,6 +94,31 @@ class AuthController extends ChangeNotifier {
     });
   }
 
+  Future<void> updateName(String name) async {
+    final userId = _profile?.id;
+    if (_status != AuthStatus.authenticated || userId == null) {
+      throw StateError('Нет активного аккаунта');
+    }
+    final profile = await _profileApi.updateProfile(name: name.trim());
+    if (_status != AuthStatus.authenticated || _profile?.id != userId) return;
+    _profile = profile;
+    notifyListeners();
+  }
+
+  Future<void> changePassword(
+      {required String currentPassword, required String newPassword}) async {
+    final userId = _profile?.id;
+    if (_status != AuthStatus.authenticated || userId == null) {
+      throw StateError('Нет активного аккаунта');
+    }
+    final tokens = await _authApi.changePassword(
+        currentPassword: currentPassword, newPassword: newPassword);
+    if (_status != AuthStatus.authenticated || _profile?.id != userId) return;
+    await _client.tokenStorage.saveTokens(
+        accessToken: tokens['access_token'] as String,
+        refreshToken: tokens['refresh_token'] as String);
+  }
+
   Future<void> logout() async {
     await _authApi.logout();
     _profile = null;

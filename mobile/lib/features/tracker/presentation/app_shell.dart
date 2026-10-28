@@ -6,6 +6,9 @@ import '../../../app/theme.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/config/server_settings.dart';
 import '../../../core/utils/russian_date.dart';
+import '../../attacks/data/medications_api.dart';
+import '../../auth/state/auth_controller.dart';
+import '../../profile/presentation/profile_settings_page.dart';
 import '../../analytics/data/analytics_api.dart';
 import '../../analytics/presentation/analytics_page.dart';
 import '../../analytics/state/analytics_controller.dart';
@@ -30,6 +33,7 @@ class AppShell extends StatefulWidget {
   const AppShell({
     required this.controller,
     this.userName,
+    this.authController,
     this.userEmail,
     this.onLogout,
     this.diaryRepository,
@@ -45,6 +49,7 @@ class AppShell extends StatefulWidget {
   });
 
   final TrackerController controller;
+  final AuthController? authController;
   final String? userName;
   final String? userEmail;
   final DiaryRepository? diaryRepository;
@@ -279,6 +284,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 ),
               ],
               const SizedBox(height: 20),
+              if (widget.authController != null) ...[
+                SecondaryActionButton(
+                    label: 'Настройки профиля',
+                    onPressed: () =>
+                        Navigator.pop(context, _ProfileAction.settings)),
+                const SizedBox(height: 12),
+              ],
               SecondaryActionButton(
                 label: 'Знакомство с приложением',
                 onPressed: () =>
@@ -319,6 +331,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     );
 
     if (!mounted) return;
+    if (action == _ProfileAction.settings && widget.authController != null) {
+      await Navigator.of(context).push<void>(MaterialPageRoute(
+          builder: (_) =>
+              ProfileSettingsPage(controller: widget.authController!)));
+    }
     if (action == _ProfileAction.logout) await onLogout?.call();
     if (action == _ProfileAction.onboarding) await _showOnboarding();
     if (action == _ProfileAction.server) await _changeServer();
@@ -349,6 +366,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         builder: (context) => AttackEntryPage(
           controller: widget.controller,
           initialRecord: record,
+          medicationsApi: widget.apiClient == null
+              ? null
+              : MedicationsApi(widget.apiClient!),
         ),
       ),
     );
@@ -365,6 +385,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         builder: (context) => AttackDetailsPage(
           controller: widget.controller,
           recordId: record.id,
+          medicationsApi: widget.apiClient == null
+              ? null
+              : MedicationsApi(widget.apiClient!),
         ),
       ),
     );
@@ -478,4 +501,4 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 }
 
-enum _ProfileAction { onboarding, reminder, server, logout }
+enum _ProfileAction { settings, onboarding, reminder, server, logout }

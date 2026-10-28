@@ -4,6 +4,8 @@ import '../../../../app/theme.dart';
 import '../../../../core/utils/app_time_picker.dart';
 import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
+import '../../../attacks/data/medications_api.dart';
+import '../../../attacks/presentation/widgets/medication_selector.dart';
 import '../../domain/attack_draft.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
@@ -15,11 +17,13 @@ class AttackEntryPage extends StatefulWidget {
   const AttackEntryPage({
     required this.controller,
     this.initialRecord,
+    this.medicationsApi,
     super.key,
   });
 
   final TrackerController controller;
   final AttackRecord? initialRecord;
+  final MedicationsApi? medicationsApi;
 
   @override
   State<AttackEntryPage> createState() => _AttackEntryPageState();
@@ -53,7 +57,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     'Ноющая',
     'Острая',
   ];
-  final List<String> _medicationOptions = [];
   final List<String> _reliefOptions = [
     'Отдых',
     'Сон',
@@ -91,11 +94,6 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     }
     if (_painType != null && !_painTypeOptions.contains(_painType)) {
       _painTypeOptions.add(_painType!);
-    }
-    for (final medication in _medications) {
-      if (!_medicationOptions.contains(medication)) {
-        _medicationOptions.add(medication);
-      }
     }
     for (final factor in _reliefFactors) {
       if (!_reliefOptions.contains(factor)) _reliefOptions.add(factor);
@@ -369,18 +367,20 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _ChoiceSection(
-                      title: 'Препараты',
-                      options: _medicationOptions,
-                      selected: _medications,
-                      onSelected: (option) => _toggle(_medications, option),
-                      onAdd: () => _addCustomOption(
-                        title: 'Добавить препарат',
-                        options: _medicationOptions,
-                        selected: _medications,
-                        maxLength: 80,
-                      ),
-                    ),
+                    AppCard(
+                        child: MedicationSelector(
+                      selectedMedications: _medications.toList(),
+                      onChanged: (values) =>
+                          setState(() => _medications = values.toSet()),
+                      onSearch: (query) async => widget.medicationsApi != null
+                          ? widget.medicationsApi!.search(query)
+                          : presetMedications
+                              .where((name) => name
+                                  .toLowerCase()
+                                  .contains(query.toLowerCase()))
+                              .toList(),
+                      onAddCustom: widget.medicationsApi?.addCustom,
+                    )),
                     const SizedBox(height: 14),
                     _ChoiceSection(
                       title: 'Что помогло?',
@@ -637,6 +637,7 @@ class _ChoiceSection extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (final option in options)
                 ChoiceChip(
@@ -659,27 +660,21 @@ class _ChoiceSection extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                 ),
               if (onAdd != null)
-                ActionChip(
-                  tooltip:
-                      options.isEmpty ? 'Добавить' : 'Добавить свой вариант',
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  labelStyle: const TextStyle(
-                      fontFamily: 'Onest',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600),
-                  key: ValueKey('add-option-$title'),
-                  avatar: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(options.isEmpty ? 'Добавить' : ''),
-                  onPressed: onAdd,
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(
-                    color: AppColors.blue,
-                    style: BorderStyle.solid,
-                  ),
-                  shape: const StadiumBorder(),
-                ),
+                SizedBox.square(
+                    dimension: 32,
+                    child: IconButton.outlined(
+                        key: ValueKey('add-option-$title'),
+                        tooltip: 'Добавить свой вариант',
+                        onPressed: onAdd,
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                            foregroundColor: AppColors.blue,
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: AppColors.blue),
+                            shape: const CircleBorder(),
+                            minimumSize: const Size(32, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        icon: const Icon(Icons.add_rounded, size: 18))),
             ],
           ),
         ],

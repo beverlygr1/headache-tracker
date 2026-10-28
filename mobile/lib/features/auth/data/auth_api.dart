@@ -68,6 +68,19 @@ class AuthApi {
     );
   }
 
+  Future<Map<String, dynamic>> changePassword(
+      {required String currentPassword, required String newPassword}) async {
+    final response = await _client.put<Map<String, dynamic>>('/auth/password',
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword
+        });
+    if (response.data == null) {
+      throw StateError('Пустой ответ при смене пароля');
+    }
+    return response.data!;
+  }
+
   Future<void> logout() {
     return _client.tokenStorage.clear();
   }

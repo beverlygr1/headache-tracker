@@ -111,6 +111,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           selected: _metric == metric,
           child: AppCard(
             color: _metric == metric ? AppColors.bluePale : Colors.white,
+            border: BorderSide(
+                color: _metric == metric ? AppColors.blue : AppColors.line,
+                width: _metric == metric ? 1.5 : 1),
             onTap: () => _selectMetric(metric),
             child: Row(children: [
               Container(
@@ -185,83 +188,87 @@ class _DailyChartState extends State<_DailyChart> {
         : points.fold<double>(1, (max, p) => math.max(max, _value(p) ?? 0));
     final selected = _selected ?? (points.isEmpty ? null : points.length - 1);
     return AppCard(
+        border: const BorderSide(color: AppColors.line),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: Theme.of(context).textTheme.titleMedium),
-      const SizedBox(height: 8),
-      Text('Часовой пояс: ${widget.series.timeZone}',
-          style: const TextStyle(color: AppColors.muted, fontSize: 10)),
-      const SizedBox(height: 16),
-      if (selected != null)
-        Text(
-            '${RussianDate.dayMonth(points[selected].date)} · ${_label(points[selected])}',
-            key: const ValueKey('chart-selected-value'),
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-      const SizedBox(height: 16),
-      Text(
-          'Шкала: 0–${maxValue.ceil()}${widget.metric == _Metric.duration ? ' мин' : ''}',
-          style: const TextStyle(color: AppColors.muted, fontSize: 10)),
-      const SizedBox(height: 8),
-      SizedBox(
-          height: 150,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            reverse: true,
-            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              for (var i = 0; i < points.length; i++)
-                Semantics(
-                    button: true,
-                    selected: i == selected,
-                    label:
-                        '${RussianDate.dayMonth(points[i].date)}: ${_label(points[i])}',
-                    child: InkWell(
-                      key: ValueKey('chart-day-$i'),
-                      onTap: () => setState(() => _selected = i),
-                      borderRadius: BorderRadius.circular(6),
-                      child: SizedBox(
-                          width: 32,
-                          child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Container(
-                                    width: 16,
-                                    height: _value(points[i]) == null
-                                        ? 3
-                                        : math.max(
-                                            3.0,
-                                            _value(points[i])! /
-                                                maxValue *
-                                                112),
-                                    decoration: BoxDecoration(
-                                        color: _value(points[i]) == null
-                                            ? AppColors.line
-                                            : i == selected
-                                                ? AppColors.blue
-                                                : AppColors.blueSoft,
-                                        borderRadius:
-                                            BorderRadius.circular(5))),
-                                const SizedBox(height: 8),
-                                Text('${points[i].date.day}',
-                                    style: const TextStyle(fontSize: 10)),
-                                Text(
-                                    points[i]
-                                        .date
-                                        .month
-                                        .toString()
-                                        .padLeft(2, '0'),
-                                    style: const TextStyle(
-                                        color: AppColors.muted, fontSize: 9)),
-                              ])),
-                    )),
-            ]),
-          )),
-      const SizedBox(height: 12),
-      const Text('Листайте график и нажимайте на день, чтобы увидеть значение.',
-          style: TextStyle(color: AppColors.muted, fontSize: 11)),
-      if (widget.metric == _Metric.duration)
-        const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text('Среднее только по завершённым приступам.',
-                style: TextStyle(color: AppColors.muted, fontSize: 11))),
-    ]));
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text('Часовой пояс: ${widget.series.timeZone}',
+              style: const TextStyle(color: AppColors.muted, fontSize: 10)),
+          const SizedBox(height: 16),
+          if (selected != null)
+            Text(
+                '${RussianDate.dayMonth(points[selected].date)} · ${_label(points[selected])}',
+                key: const ValueKey('chart-selected-value'),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          Text(
+              'Шкала: 0–${maxValue.ceil()}${widget.metric == _Metric.duration ? ' мин' : ''}',
+              style: const TextStyle(color: AppColors.muted, fontSize: 10)),
+          const SizedBox(height: 8),
+          SizedBox(
+              height: 150,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                reverse: true,
+                child:
+                    Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  for (var i = 0; i < points.length; i++)
+                    Semantics(
+                        button: true,
+                        selected: i == selected,
+                        label:
+                            '${RussianDate.dayMonth(points[i].date)}: ${_label(points[i])}',
+                        child: InkWell(
+                          key: ValueKey('chart-day-$i'),
+                          onTap: () => setState(() => _selected = i),
+                          borderRadius: BorderRadius.circular(6),
+                          child: SizedBox(
+                              width: 32,
+                              child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                        width: 16,
+                                        height: _value(points[i]) == null
+                                            ? 3
+                                            : math.max(
+                                                3.0,
+                                                _value(points[i])! /
+                                                    maxValue *
+                                                    112),
+                                        decoration: BoxDecoration(
+                                            color: _value(points[i]) == null
+                                                ? AppColors.line
+                                                : i == selected
+                                                    ? AppColors.blue
+                                                    : AppColors.blueSoft,
+                                            borderRadius:
+                                                BorderRadius.circular(5))),
+                                    const SizedBox(height: 8),
+                                    Text('${points[i].date.day}',
+                                        style: const TextStyle(fontSize: 10)),
+                                    Text(
+                                        points[i]
+                                            .date
+                                            .month
+                                            .toString()
+                                            .padLeft(2, '0'),
+                                        style: const TextStyle(
+                                            color: AppColors.muted,
+                                            fontSize: 9)),
+                                  ])),
+                        )),
+                ]),
+              )),
+          const SizedBox(height: 12),
+          const Text(
+              'Листайте график и нажимайте на день, чтобы увидеть значение.',
+              style: TextStyle(color: AppColors.muted, fontSize: 11)),
+          if (widget.metric == _Metric.duration)
+            const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Среднее только по завершённым приступам.',
+                    style: TextStyle(color: AppColors.muted, fontSize: 11))),
+        ]));
   }
 }

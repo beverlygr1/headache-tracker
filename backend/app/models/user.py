@@ -20,6 +20,7 @@ class User(TimestampMixin, Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), nullable=False)
     time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     gender: Mapped[str | None] = mapped_column(String(32), nullable=True)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)

@@ -140,6 +140,7 @@ class _AuthGateState extends State<AuthGate> {
       AuthStatus.authenticated => AppShell(
           key: ObjectKey(tracker),
           controller: tracker!,
+          authController: widget.authController,
           apiClient: widget.apiClient,
           serverSettings: widget.serverSettings,
           reminderController: widget.reminderController,

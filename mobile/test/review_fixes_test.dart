@@ -178,13 +178,16 @@ void main() {
     expect(
         find.byKey(const ValueKey('add-option-Характер боли')), findsNothing);
     expect(find.byKey(const ValueKey('add-option-Что помогло?')), findsNothing);
-    await tester.scrollUntilVisible(find.text('Прежнее описание'), 180);
+    await tester.scrollUntilVisible(find.text('Прежнее описание'), 180,
+        scrollable: find.byType(Scrollable).first);
     final oldPain = tester.widget<ChoiceChip>(
         find.widgetWithText(ChoiceChip, 'Прежнее описание'));
     expect(oldPain.selected, isTrue);
-    await tester.scrollUntilVisible(find.text('Звук мешает'), 180);
+    await tester.scrollUntilVisible(find.text('Звук мешает'), 180,
+        scrollable: find.byType(Scrollable).first);
     expect(find.widgetWithText(ChoiceChip, 'Звук мешает'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Прежний способ'), 180);
+    await tester.scrollUntilVisible(find.text('Прежний способ'), 180,
+        scrollable: find.byType(Scrollable).first);
     expect(
         tester
             .widget<ChoiceChip>(
