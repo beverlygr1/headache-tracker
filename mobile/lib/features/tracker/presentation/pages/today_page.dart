@@ -40,7 +40,7 @@ class TodayPage extends StatelessWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onCreateAttack;
   final ValueChanged<AttackRecord> onOpenAttack;
-  final VoidCallback onOpenDailyEntry;
+  final ValueChanged<DateTime?> onOpenDailyEntry;
   final List<DailyEntry> dailyEntries;
   final String? diaryError;
   final VoidCallback? onRetryDiary;
@@ -125,6 +125,7 @@ class TodayPage extends StatelessWidget {
               const SizedBox(height: 26),
               ForecastCard(
                   controller: forecastController,
+                  dailyEntries: dailyEntries,
                   onOpenDailyEntry: onOpenDailyEntry),
               const SizedBox(height: 14),
               PrimaryActionButton(
@@ -136,8 +137,7 @@ class TodayPage extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               AppCard(
-                color: AppColors.blueSoft,
-                onTap: onOpenDailyEntry,
+                onTap: () => onOpenDailyEntry(null),
                 child: Row(
                   children: [
                     const Icon(

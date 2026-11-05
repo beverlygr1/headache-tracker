@@ -84,7 +84,7 @@ void main() {
       (tester) async {
     _phone(tester);
     var ready = false;
-    var opened = false;
+    DateTime? opened;
     final controller =
         ForecastController.withLoader(() async => _forecast(ready));
     addTearDown(controller.dispose);
@@ -93,17 +93,35 @@ void main() {
         home: Scaffold(
             body: ForecastCard(
                 controller: controller,
-                onOpenDailyEntry: () => opened = true))));
+                dailyEntries: [
+                  DailyEntry(
+                      date: DateTime(2026, 10, 28),
+                      sleepHours: 5.5,
+                      stressLevel: 7,
+                      caffeineIntake: 0)
+                ],
+                onOpenDailyEntry: (date) => opened = date))));
     expect(find.textContaining('длительность сна, уровень стресса'),
         findsOneWidget);
     await tester.tap(find.text('Заполнить самочувствие'));
-    expect(opened, isTrue);
+    expect(opened, DateTime(2026, 10, 28));
     ready = true;
     await controller.refresh();
     await tester.pump();
-    expect(find.text('37% — вероятность боли'), findsOneWidget);
-    expect(find.text('На 29 октября'), findsOneWidget);
+    expect(find.text('37%'), findsOneWidget);
+    expect(find.text('Прогноз на 29 октября'), findsOneWidget);
     expect(find.text('Заполнить самочувствие'), findsNothing);
+    await tester.tap(find.text('37%'));
+    await tester.pumpAndSettle();
+    expect(find.text('Данные для расчёта'), findsOneWidget);
+    expect(find.text('5,5 ч'), findsOneWidget);
+    expect(find.text('7 из 10'), findsOneWidget);
+    expect(find.text('0 мг'), findsOneWidget);
+    expect(find.textContaining('03:00 UTC'), findsOneWidget);
+    opened = null;
+    await tester.tap(find.text('Посмотреть запись за 28 октября'));
+    await tester.pumpAndSettle();
+    expect(opened, DateTime(2026, 10, 28));
   });
 
   testWidgets('statistics cards open each metric and day values from server',
@@ -366,6 +384,7 @@ class _NoTokens extends TokenStorage {
 ForecastData _forecast(bool ready) => ForecastData.fromJson({
       'status': ready ? 'ready' : 'insufficient_data',
       'prediction_date': '2026-10-29',
+      'calculated_at': '2026-10-28T03:00:00Z',
       'time_zone': 'Asia/Tomsk',
       'probability': ready ? .37 : null,
       'missing_fields': ready ? <String>[] : ['sleep_hours', 'stress_level'],

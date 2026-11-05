@@ -147,7 +147,7 @@ void main() {
           onCreateAttack: () {},
           onOpenAttack: (_) {},
           onProfileTap: () {},
-          onOpenDailyEntry: () {}),
+          onOpenDailyEntry: (_) {}),
       AttackDetailsPage(controller: controller, recordId: 1),
     ];
     for (final page in pages) {

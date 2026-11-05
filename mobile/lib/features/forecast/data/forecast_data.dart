@@ -3,6 +3,7 @@ class ForecastData {
       {required this.isReady,
       required this.predictionDate,
       required this.timeZone,
+      this.calculatedAt,
       this.probability,
       this.message,
       this.missingFields = const [],
@@ -11,6 +12,7 @@ class ForecastData {
   final bool isReady;
   final DateTime predictionDate;
   final String timeZone;
+  final DateTime? calculatedAt;
   final double? probability;
   final String? message;
   final List<String> missingFields;
@@ -34,6 +36,7 @@ class ForecastData {
         isReady: status == 'ready',
         predictionDate: DateTime.parse(json['prediction_date'] as String),
         timeZone: json['time_zone'] as String,
+        calculatedAt: DateTime.tryParse(json['calculated_at'] as String? ?? ''),
         probability: probability,
         message: json['message'] as String?,
         missingFields: strings('missing_fields'),
