@@ -12,6 +12,7 @@ import 'features/auth/state/auth_controller.dart';
 import 'features/diary/data/diary_api.dart';
 import 'features/onboarding/presentation/onboarding_demo.dart';
 import 'features/profile/data/profile_api.dart';
+import 'features/profile/data/profile_cache.dart';
 import 'features/reminders/data/reminder_scheduler.dart';
 import 'features/reminders/data/reminder_settings.dart';
 import 'features/reminders/state/reminder_controller.dart';
@@ -49,11 +50,13 @@ Future<Widget> _buildHome() async {
     client: client,
     authApi: AuthApi(client),
     profileApi: ProfileApi(client),
+    profileCache: ProfileCache(client),
     deviceTimeZone: () async =>
         (await FlutterTimezone.getLocalTimezone()).identifier,
   )..restoreSession();
 
   return AuthGate(
+    enableLocalPersistence: true,
     authController: authController,
     apiClient: client,
     serverSettings: serverSettings,

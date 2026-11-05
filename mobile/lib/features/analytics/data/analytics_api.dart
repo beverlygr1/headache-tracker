@@ -47,11 +47,13 @@ class AnalyticsApi {
     required String format,
     DateTime? fromDate,
     DateTime? toDate,
+    String? timeZone,
   }) async {
     final response = await _client.get<List<int>>(
       '/analytics/export',
       queryParameters: {
         'format': format,
+        if (timeZone != null) 'time_zone': timeZone,
         if (fromDate != null) 'from_date': _dateOnly(fromDate),
         if (toDate != null) 'to_date': _dateOnly(toDate),
       },

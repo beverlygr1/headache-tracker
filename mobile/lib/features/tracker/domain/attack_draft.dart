@@ -9,6 +9,7 @@ class AttackDraft {
     required Iterable<String> painZones,
     required Iterable<String> symptoms,
     this.painType,
+    this.medicationEffects = const {},
     Iterable<String> medications = const [],
     Iterable<String> reliefFactors = const [],
   })  : painZones = List.unmodifiable(painZones),
@@ -16,6 +17,7 @@ class AttackDraft {
         medications = List.unmodifiable(medications),
         reliefFactors = List.unmodifiable(reliefFactors);
 
+  final Map<String, String> medicationEffects;
   final int? id;
   final DateTime startTime;
   final int intensity;

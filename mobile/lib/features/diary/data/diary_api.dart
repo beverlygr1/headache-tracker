@@ -1,7 +1,9 @@
 import '../../../core/api/api_client.dart';
+import '../../offline/data/local_workspace.dart';
 
 class DiaryApi {
-  DiaryApi(this._client);
+  DiaryApi(this._client, {this.workspace});
+  final LocalWorkspace? workspace;
 
   final ApiClient _client;
 

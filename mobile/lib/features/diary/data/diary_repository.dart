@@ -13,30 +13,53 @@ class ApiDiaryRepository implements DiaryRepository {
   final DiaryApi _api;
 
   @override
-  Future<List<DailyEntry>> fetchAll() async =>
-      (await _api.getList()).map(DailyEntry.fromJson).toList();
+  Future<List<DailyEntry>> fetchAll() async {
+    final records = _api.workspace == null
+        ? await _api.getList()
+        : await _api.workspace!.loadRecords('diary', _api.getList);
+    return records.map(DailyEntry.fromJson).toList();
+  }
 
   @override
   Future<DailyEntry?> fetchByDate(DateTime date) async {
+    final workspace = _api.workspace;
+    final key = DailyEntry(date: date).toJson()['date'] as String;
+    final cached = await workspace?.readRecord('diary', key);
+    if (cached?['pending_sync'] == true) return DailyEntry.fromJson(cached!);
     try {
-      return DailyEntry.fromJson(await _api.getByDate(date));
+      final record = await _api.getByDate(date);
+      await workspace?.cacheRecord('diary', record);
+      return DailyEntry.fromJson(record);
     } on ApiException catch (error) {
       if (error.statusCode == 404) return null;
+      if (workspace != null && error.isNetworkError) {
+        workspace.markOffline();
+        return cached == null ? null : DailyEntry.fromJson(cached);
+      }
       rethrow;
     }
   }
 
   @override
-  Future<DailyEntry> save(DailyEntry entry) async => DailyEntry.fromJson(
-        await _api.upsert(entry.date,
-            headachePresent: entry.headachePresent,
-            sleepHours: entry.sleepHours,
-            sleepQuality: entry.sleepQuality,
-            stressLevel: entry.stressLevel,
-            caffeineIntake: entry.caffeineIntake,
-            waterMl: entry.waterMl,
-            replaceDailyFields: true),
-      );
+  Future<DailyEntry> save(DailyEntry entry) async {
+    final workspace = _api.workspace;
+    if (workspace != null) {
+      final body = entry.toJson()..remove('pending_sync');
+      final date = body.remove('date') as String;
+      return DailyEntry.fromJson(
+          (await workspace.write('diary', 'PUT', body, entity: date))!);
+    }
+    return DailyEntry.fromJson(
+      await _api.upsert(entry.date,
+          headachePresent: entry.headachePresent,
+          sleepHours: entry.sleepHours,
+          sleepQuality: entry.sleepQuality,
+          stressLevel: entry.stressLevel,
+          caffeineIntake: entry.caffeineIntake,
+          waterMl: entry.waterMl,
+          replaceDailyFields: true),
+    );
+  }
 }
 
 class InMemoryDiaryRepository implements DiaryRepository {

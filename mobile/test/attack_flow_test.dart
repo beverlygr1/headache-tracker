@@ -489,6 +489,7 @@ class _ControlledRepository extends InMemoryAttackRepository {
     String? painType,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) async {
     attempts++;
     if (failFirst && attempts == 1) {

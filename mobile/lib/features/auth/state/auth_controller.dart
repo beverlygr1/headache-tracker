@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../profile/data/profile_api.dart';
+import '../../profile/data/profile_cache.dart';
 import '../../profile/data/user_profile.dart';
 import '../data/auth_api.dart';
 
@@ -14,6 +15,7 @@ class AuthController extends ChangeNotifier {
     required AuthApi authApi,
     required ProfileApi profileApi,
     Future<String?> Function()? deviceTimeZone,
+    this.profileCache,
   })  : _client = client,
         _authApi = authApi,
         _profileApi = profileApi,
@@ -24,6 +26,7 @@ class AuthController extends ChangeNotifier {
   final ApiClient _client;
   final AuthApi _authApi;
   final ProfileApi _profileApi;
+  final ProfileCache? profileCache;
 
   /// IANA-пояс телефона. Нужен аналитике и прогнозу: без пояса в профиле
   /// сервер считает дни по UTC, и ночные приступы уходят на соседний день.
@@ -58,6 +61,7 @@ class AuthController extends ChangeNotifier {
     // An expired session must not be resurrected by a late response.
     if (_status != AuthStatus.authenticated || _profile?.id != userId) return;
     _profile = profile;
+    await _cacheProfile();
     notifyListeners();
   }
 
@@ -71,9 +75,15 @@ class AuthController extends ChangeNotifier {
       }
 
       _profile = await _fillTimeZone(await _profileApi.getProfile());
+      await _cacheProfile();
       _setStatus(AuthStatus.authenticated);
       _loadAvatar();
     } on ApiException catch (error) {
+      if (!error.isUnauthorized && _profile == null) {
+        try {
+          _profile = await profileCache?.read();
+        } catch (_) {}
+      }
       // Сервер недоступен или вернул 5xx — пускаем в приложение с сохранённым
       // токеном: экран данных сам покажет ошибку и кнопку повтора.
       _setStatus(
@@ -92,6 +102,15 @@ class AuthController extends ChangeNotifier {
 
   Future<void> login({required String email, required String password}) {
     return _run(() => _authApi.login(email: email, password: password));
+  }
+
+  Future<void> _cacheProfile() async {
+    final profile = _profile;
+    if (profile != null) {
+      try {
+        await profileCache?.write(profile);
+      } catch (_) {}
+    }
   }
 
   Future<void> register({
@@ -113,6 +132,7 @@ class AuthController extends ChangeNotifier {
     final profile = await _profileApi.updateProfile(name: name.trim());
     if (_status != AuthStatus.authenticated || _profile?.id != userId) return;
     _profile = profile;
+    await _cacheProfile();
     notifyListeners();
   }
 
@@ -130,6 +150,7 @@ class AuthController extends ChangeNotifier {
     );
     if (!_isCurrent(userId)) return;
     _profile = profile;
+    await _cacheProfile();
     notifyListeners();
   }
 
@@ -138,6 +159,7 @@ class AuthController extends ChangeNotifier {
     final profile = await _profileApi.uploadAvatar(bytes);
     if (!_isCurrent(userId)) return;
     _profile = profile;
+    await _cacheProfile();
     _avatar = bytes;
     notifyListeners();
   }
@@ -147,6 +169,7 @@ class AuthController extends ChangeNotifier {
     final profile = await _profileApi.deleteAvatar();
     if (!_isCurrent(userId)) return;
     _profile = profile;
+    await _cacheProfile();
     _avatar = null;
     notifyListeners();
   }
@@ -224,6 +247,7 @@ class AuthController extends ChangeNotifier {
     try {
       await action();
       _profile = await _fillTimeZone(await _profileApi.getProfile());
+      await _cacheProfile();
       _avatar = null;
       _status = AuthStatus.authenticated;
     } finally {

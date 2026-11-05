@@ -14,6 +14,7 @@ abstract interface class AttackRepository {
     String? painType,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   });
 
   Future<AttackRecord> update(
@@ -26,6 +27,7 @@ abstract interface class AttackRepository {
     bool clearPainType = false,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   });
 
   Future<AttackRecord> finish(int id, DateTime endTime);
@@ -41,6 +43,14 @@ class ApiAttackRepository implements AttackRepository {
 
   @override
   Future<List<AttackRecord>> fetchAll() async {
+    final workspace = _api.workspace;
+    if (workspace == null) return _fetchRemote();
+    final records = await workspace.loadRecords('attacks',
+        () async => (await _fetchRemote()).map((r) => r.toJson()).toList());
+    return records.map((r) => _toRecord(AttackDto.fromJson(r))).toList();
+  }
+
+  Future<List<AttackRecord>> _fetchRemote() async {
     final result = <AttackRecord>[];
     var offset = 0;
     while (true) {
@@ -63,6 +73,7 @@ class ApiAttackRepository implements AttackRepository {
     String? painType,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) async {
     final dto = await _api.create(
       startTime: startTime,
@@ -72,6 +83,7 @@ class ApiAttackRepository implements AttackRepository {
       painType: painType,
       medications: medications,
       reliefFactors: reliefFactors,
+      medicationEffects: medicationEffects,
     );
     return _toRecord(dto);
   }
@@ -87,6 +99,7 @@ class ApiAttackRepository implements AttackRepository {
     bool clearPainType = false,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) async {
     final dto = await _api.update(
       id,
@@ -98,6 +111,7 @@ class ApiAttackRepository implements AttackRepository {
       includePainType: clearPainType || painType != null,
       medications: medications,
       reliefFactors: reliefFactors,
+      medicationEffects: medicationEffects,
     );
     return _toRecord(dto);
   }
@@ -121,6 +135,8 @@ class ApiAttackRepository implements AttackRepository {
       painType: dto.painType,
       medications: dto.medications,
       reliefFactors: dto.reliefFactors,
+      medicationEffects: dto.medicationEffects,
+      pendingSync: dto.pendingSync,
     );
   }
 }
@@ -146,6 +162,7 @@ class InMemoryAttackRepository implements AttackRepository {
     String? painType,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) async {
     final record = AttackRecord(
       id: _nextId++,
@@ -156,6 +173,7 @@ class InMemoryAttackRepository implements AttackRepository {
       painType: painType,
       medications: List.unmodifiable(medications ?? const []),
       reliefFactors: List.unmodifiable(reliefFactors ?? const []),
+      medicationEffects: Map.unmodifiable(medicationEffects ?? const {}),
     );
     _records.add(record);
     return record;
@@ -172,6 +190,7 @@ class InMemoryAttackRepository implements AttackRepository {
     bool clearPainType = false,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) async {
     return _replace(
       id,
@@ -184,6 +203,7 @@ class InMemoryAttackRepository implements AttackRepository {
         clearPainType: clearPainType,
         medications: medications,
         reliefFactors: reliefFactors,
+        medicationEffects: medicationEffects,
       ),
     );
   }

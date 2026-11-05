@@ -1,4 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../core/api/api_exception.dart';
+import '../../../offline/data/local_workspace.dart';
+import '../../../offline/presentation/persistent_draft.dart';
+import '../../../attacks/presentation/widgets/medication_effects_field.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/utils/app_time_picker.dart';
@@ -30,7 +35,8 @@ class AttackEntryPage extends StatefulWidget {
   State<AttackEntryPage> createState() => _AttackEntryPageState();
 }
 
-class _AttackEntryPageState extends State<AttackEntryPage> {
+class _AttackEntryPageState extends State<AttackEntryPage>
+    with PersistentDraft<AttackEntryPage> {
   late DateTime _startTime;
   late int _intensity;
   late Set<String> _painLocations;
@@ -38,6 +44,49 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   late String? _painType;
   late Set<String> _medications;
   late Set<String> _reliefFactors;
+  Map<String, String> _medicationEffects = {};
+  @override
+  LocalWorkspace? get draftWorkspace => widget.controller.workspace;
+  @override
+  String get draftKey => 'attack:${widget.initialRecord?.id ?? 'new'}';
+  @override
+  Map<String, dynamic> captureDraft() => {
+        'start_time': _startTime.toIso8601String(),
+        'intensity': _intensity,
+        'zones': _painLocations.toList(),
+        'symptoms': _symptoms.toList(),
+        'pain_type': _painType,
+        'medications': _medications.toList(),
+        'relief': _reliefFactors.toList(),
+        'effects': _medicationEffects,
+        'details': _showDetails,
+      };
+  @override
+  void applyDraft(Map<String, dynamic> values) {
+    _startTime = DateTime.parse(values['start_time'] as String);
+    _intensity = (values['intensity'] as int).clamp(1, 10);
+    _painLocations = (values['zones'] as List).cast<String>().toSet();
+    _symptoms = (values['symptoms'] as List).cast<String>().toSet();
+    _painType = values['pain_type'] as String?;
+    _medications = (values['medications'] as List).cast<String>().toSet();
+    _reliefFactors = (values['relief'] as List).cast<String>().toSet();
+    _medicationEffects =
+        Map<String, String>.from(values['effects'] as Map? ?? {});
+    _showDetails = values['details'] == true;
+    for (final zone in _painLocations) {
+      if (!_painOptions.contains(zone)) _painOptions.add(zone);
+    }
+    for (final symptom in _symptoms) {
+      if (!_symptomOptions.contains(symptom)) _symptomOptions.add(symptom);
+    }
+    for (final relief in _reliefFactors) {
+      if (!_reliefOptions.contains(relief)) _reliefOptions.add(relief);
+    }
+    if (_painType != null && !_painTypeOptions.contains(_painType)) {
+      _painTypeOptions.add(_painType!);
+    }
+  }
+
   bool _showDetails = false;
   bool _openingMap = false;
   bool _openingReview = false;
@@ -92,6 +141,8 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
     _medications = Set.of(record?.medications ?? const <String>[]);
     _reliefFactors = Set.of(record?.reliefFactors ?? const <String>[]);
     _showDetails = record != null;
+    _medicationEffects = Map.of(record?.medicationEffects ?? {});
+    unawaited(restoreDraft());
 
     for (final zone in _painLocations) {
       if (!_painOptions.contains(zone)) _painOptions.add(zone);
@@ -113,305 +164,316 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const BackTitleBar(title: 'Запись приступа'),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
+      body: draftRestoring
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+              top: false,
+              child: Column(
                 children: [
-                  const AppCard(
-                    color: AppColors.blueSoft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       children: [
-                        Text(
-                          'Быстрая запись',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
+                        if (draftRestored || draftError != null) draftNotice,
+                        const AppCard(
+                          color: AppColors.blueSoft,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Быстрая запись',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'Укажите время и силу боли. Остальное можно добавить позже.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: 6),
-                        Text(
-                          'Укажите время и силу боли. Остальное можно добавить позже.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.muted,
+                        const SizedBox(height: 14),
+                        AppCard(
+                          onTap: _selectStartTime,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(top: 2),
+                                child: Icon(
+                                  Icons.schedule_rounded,
+                                  color: AppColors.muted,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 13),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Когда началась боль?',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      RussianDate.isSameDay(
+                                        _startTime,
+                                        DateTime.now(),
+                                      )
+                                          ? 'Сегодня, ${RussianDate.time(_startTime)}'
+                                          : '${RussianDate.dayMonth(_startTime)}, '
+                                              '${RussianDate.time(_startTime)}',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      widget.initialRecord?.isActive == false
+                                          ? 'Время начала сохранённого приступа'
+                                          : 'Приступ ещё продолжается',
+                                      style: const TextStyle(
+                                        color: AppColors.blue,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.edit_outlined,
+                                color: AppColors.muted,
+                                size: 18,
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  AppCard(
-                    onTap: _selectStartTime,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 2),
-                          child: Icon(
-                            Icons.schedule_rounded,
-                            color: AppColors.muted,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 13),
-                        Expanded(
+                        const SizedBox(height: 14),
+                        AppCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Когда началась боль?',
+                                'Насколько сильно болит?',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                RussianDate.isSameDay(
-                                  _startTime,
-                                  DateTime.now(),
-                                )
-                                    ? 'Сегодня, ${RussianDate.time(_startTime)}'
-                                    : '${RussianDate.dayMonth(_startTime)}, '
-                                        '${RussianDate.time(_startTime)}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Text(
+                                    '$_intensity',
+                                    style: const TextStyle(
+                                      fontSize: 28,
+                                      height: 1,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Expanded(
+                                    child: Text(
+                                      'из 10 · ${PainIntensity.description(_intensity).toLowerCase()}',
+                                      style: const TextStyle(
+                                        color: AppColors.muted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                  _IntensityButton(
+                                    icon: Icons.remove_rounded,
+                                    onPressed: _intensity > 1
+                                        ? () => draftChange(() => _intensity--)
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _IntensityButton(
+                                    icon: Icons.add_rounded,
+                                    onPressed: _intensity < 10
+                                        ? () => draftChange(() => _intensity++)
+                                        : null,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 7),
-                              Text(
-                                widget.initialRecord?.isActive == false
-                                    ? 'Время начала сохранённого приступа'
-                                    : 'Приступ ещё продолжается',
-                                style: const TextStyle(
-                                  color: AppColors.blue,
-                                  fontSize: 11,
-                                ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: List.generate(10, (index) {
+                                  final active = index < _intensity;
+                                  return Expanded(
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 160),
+                                      height: 7,
+                                      margin: EdgeInsets.only(
+                                        right: index == 9 ? 0 : 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: active
+                                            ? AppColors.blue
+                                            : const Color(0xFFE7ECF4),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 9),
+                              const Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '1 · слабая',
+                                    style: TextStyle(
+                                      color: AppColors.muted,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                  Text(
+                                    '10 · очень сильная',
+                                    style: TextStyle(
+                                      color: AppColors.muted,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        const Icon(
-                          Icons.edit_outlined,
-                          color: AppColors.muted,
-                          size: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Насколько сильно болит?',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Text(
-                              '$_intensity',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                height: 1,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                'из 10 · ${PainIntensity.description(_intensity).toLowerCase()}',
-                                style: const TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                            _IntensityButton(
-                              icon: Icons.remove_rounded,
-                              onPressed: _intensity > 1
-                                  ? () => setState(() => _intensity--)
-                                  : null,
-                            ),
-                            const SizedBox(width: 8),
-                            _IntensityButton(
-                              icon: Icons.add_rounded,
-                              onPressed: _intensity < 10
-                                  ? () => setState(() => _intensity++)
-                                  : null,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: List.generate(10, (index) {
-                            final active = index < _intensity;
-                            return Expanded(
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
-                                height: 7,
-                                margin: EdgeInsets.only(
-                                  right: index == 9 ? 0 : 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: active
-                                      ? AppColors.blue
-                                      : const Color(0xFFE7ECF4),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                        const SizedBox(height: 9),
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '1 · слабая',
-                              style: TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 9,
-                              ),
-                            ),
-                            Text(
-                              '10 · очень сильная',
-                              style: TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 9,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  AppCard(
-                    key: const ValueKey('toggle-attack-details'),
-                    onTap: () => setState(() => _showDetails = !_showDetails),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 14),
+                        AppCard(
+                          key: const ValueKey('toggle-attack-details'),
+                          onTap: () =>
+                              draftChange(() => _showDetails = !_showDetails),
+                          child: Row(
                             children: [
-                              Text(
-                                'Дополнительные сведения',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Дополнительные сведения',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    SizedBox(height: 5),
+                                    Text(
+                                      'Характер боли, симптомы, препараты и облегчение',
+                                      style: TextStyle(
+                                        color: AppColors.muted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              SizedBox(height: 5),
-                              Text(
-                                'Характер боли, симптомы, препараты и облегчение',
-                                style: TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 11,
-                                ),
+                              Icon(
+                                _showDetails
+                                    ? Icons.expand_less_rounded
+                                    : Icons.expand_more_rounded,
+                                color: AppColors.blue,
                               ),
                             ],
                           ),
                         ),
-                        Icon(
-                          _showDetails
-                              ? Icons.expand_less_rounded
-                              : Icons.expand_more_rounded,
-                          color: AppColors.blue,
-                        ),
+                        if (_showDetails) ...[
+                          const SizedBox(height: 14),
+                          _ChoiceSection(
+                            title: 'Характер боли',
+                            options: _painTypeOptions,
+                            selected: _painType == null
+                                ? const <String>{}
+                                : <String>{_painType!},
+                            onSelected: (option) => draftChange(() {
+                              _painType = _painType == option ? null : option;
+                            }),
+                          ),
+                          const SizedBox(height: 14),
+                          _ChoiceSection(
+                            title: 'Где болит?',
+                            options: _painOptions,
+                            selected: _painLocations,
+                            onSelected: _togglePainZone,
+                            onAdd: () => _addCustomOption(
+                              title: 'Добавить область',
+                              options: _painOptions,
+                              selected: _painLocations,
+                              maxLength: 120,
+                              isPainLocation: true,
+                            ),
+                            onOpenMap: _choosePainZones,
+                          ),
+                          const SizedBox(height: 14),
+                          _ChoiceSection(
+                            title: 'Что ещё чувствуете?',
+                            options: _symptomOptions,
+                            selected: _symptoms,
+                            onSelected: (option) => _toggle(_symptoms, option),
+                            onAdd: () => _addCustomOption(
+                              title: 'Добавить симптом',
+                              options: _symptomOptions,
+                              selected: _symptoms,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          AppCard(
+                              child: MedicationSelector(
+                            selectedMedications: _medications.toList(),
+                            onChanged: _setMedications,
+                            onSearch: _searchMedications,
+                            onAddCustom: _addMedication,
+                          )),
+                          const SizedBox(height: 14),
+                          if (_medications.isNotEmpty) ...[
+                            AppCard(
+                                child: MedicationEffectsField(
+                                    medications: _medications,
+                                    effects: _medicationEffects,
+                                    onChanged: (effects) => draftChange(
+                                        () => _medicationEffects = effects))),
+                            const SizedBox(height: 14),
+                          ],
+                          _ChoiceSection(
+                            title: 'Что помогло?',
+                            options: _reliefOptions,
+                            selected: _reliefFactors,
+                            onSelected: (option) =>
+                                _toggle(_reliefFactors, option),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
-                  if (_showDetails) ...[
-                    const SizedBox(height: 14),
-                    _ChoiceSection(
-                      title: 'Характер боли',
-                      options: _painTypeOptions,
-                      selected: _painType == null
-                          ? const <String>{}
-                          : <String>{_painType!},
-                      onSelected: (option) => setState(() {
-                        _painType = _painType == option ? null : option;
-                      }),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                    child: PrimaryActionButton(
+                      label: 'Продолжить',
+                      onPressed: draftRestoring || _openingMap || _openingReview
+                          ? null
+                          : _openReview,
                     ),
-                    const SizedBox(height: 14),
-                    _ChoiceSection(
-                      title: 'Где болит?',
-                      options: _painOptions,
-                      selected: _painLocations,
-                      onSelected: _togglePainZone,
-                      onAdd: () => _addCustomOption(
-                        title: 'Добавить область',
-                        options: _painOptions,
-                        selected: _painLocations,
-                        maxLength: 120,
-                        isPainLocation: true,
-                      ),
-                      onOpenMap: _choosePainZones,
-                    ),
-                    const SizedBox(height: 14),
-                    _ChoiceSection(
-                      title: 'Что ещё чувствуете?',
-                      options: _symptomOptions,
-                      selected: _symptoms,
-                      onSelected: (option) => _toggle(_symptoms, option),
-                      onAdd: () => _addCustomOption(
-                        title: 'Добавить симптом',
-                        options: _symptomOptions,
-                        selected: _symptoms,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    AppCard(
-                        child: MedicationSelector(
-                      selectedMedications: _medications.toList(),
-                      onChanged: (values) =>
-                          setState(() => _medications = values.toSet()),
-                      onSearch: (query) async => widget.medicationsApi != null
-                          ? widget.medicationsApi!.search(query)
-                          : presetMedications
-                              .where((name) => name
-                                  .toLowerCase()
-                                  .contains(query.toLowerCase()))
-                              .toList(),
-                      onAddCustom: widget.medicationsApi?.addCustom,
-                    )),
-                    const SizedBox(height: 14),
-                    _ChoiceSection(
-                      title: 'Что помогло?',
-                      options: _reliefOptions,
-                      selected: _reliefFactors,
-                      onSelected: (option) => _toggle(_reliefFactors, option),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
+                  ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-              child: PrimaryActionButton(
-                label: 'Продолжить',
-                onPressed: _openingMap || _openingReview ? null : _openReview,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -422,7 +484,7 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
       helpText: 'Время начала боли',
     );
     if (result == null || !mounted) return;
-    setState(() {
+    draftChange(() {
       _startTime = DateTime(
         _startTime.year,
         _startTime.month,
@@ -451,14 +513,14 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
       showErrorSnackBar(context, 'Названия выбранных зон слишком длинные');
       return;
     }
-    setState(() {
+    draftChange(() {
       if (!options.contains(value)) options.add(value);
       selected.add(value);
     });
   }
 
   void _toggle(Set<String> selected, String value) {
-    setState(() {
+    draftChange(() {
       if (!selected.add(value)) selected.remove(value);
     });
   }
@@ -469,14 +531,14 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
       showErrorSnackBar(context, 'Названия выбранных зон слишком длинные');
       return;
     }
-    setState(() {
+    draftChange(() {
       if (!_painLocations.add(zone)) _painLocations.remove(zone);
     });
   }
 
   Future<bool> _choosePainZones() async {
     if (_openingMap) return false;
-    setState(() => _openingMap = true);
+    draftChange(() => _openingMap = true);
     try {
       final selected = await Navigator.of(context).push<List<String>>(
         MaterialPageRoute(
@@ -485,7 +547,7 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
         ),
       );
       if (selected == null || !mounted) return false;
-      setState(() {
+      draftChange(() {
         _painLocations = Set.of(selected);
         for (final zone in selected) {
           if (!_painOptions.contains(zone)) _painOptions.add(zone);
@@ -493,19 +555,52 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
       });
       return true;
     } finally {
-      if (mounted) setState(() => _openingMap = false);
+      if (mounted) draftChange(() => _openingMap = false);
+    }
+  }
+
+  void _setMedications(List<String> values) => draftChange(() {
+        _medications = values.toSet();
+        _medicationEffects
+            .removeWhere((name, _) => !_medications.contains(name));
+      });
+
+  Future<List<String>> _searchMedications(String query) async {
+    final local =
+        widget.controller.records.expand((r) => r.medications).toSet();
+    try {
+      final remote = widget.medicationsApi == null
+          ? presetMedications
+          : await widget.medicationsApi!.search(query);
+      local.addAll(remote);
+    } on ApiException catch (error) {
+      if (!error.isNetworkError) rethrow;
+      local.addAll(presetMedications);
+    }
+    return local
+        .where((name) => name.toLowerCase().contains(query.toLowerCase()))
+        .toList();
+  }
+
+  Future<String> _addMedication(String name) async {
+    try {
+      return await widget.medicationsApi?.addCustom(name) ?? name.trim();
+    } on ApiException catch (error) {
+      if (!error.isNetworkError) rethrow;
+      return name.trim();
     }
   }
 
   Future<void> _openReview() async {
     if (_openingReview || _openingMap) return;
-    setState(() => _openingReview = true);
+    draftChange(() => _openingReview = true);
     try {
       if (!mounted) return;
       final saved = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (context) => AttackReviewPage(
             controller: widget.controller,
+            submit: saveWithDraft,
             draft: AttackDraft(
               id: widget.initialRecord?.id,
               startTime: _startTime,
@@ -515,13 +610,14 @@ class _AttackEntryPageState extends State<AttackEntryPage> {
               painType: _painType,
               medications: _medications,
               reliefFactors: _reliefFactors,
+              medicationEffects: Map.of(_medicationEffects),
             ),
           ),
         ),
       );
       if (saved == true && mounted) Navigator.of(context).pop(true);
     } finally {
-      if (mounted) setState(() => _openingReview = false);
+      if (mounted) draftChange(() => _openingReview = false);
     }
   }
 }
@@ -588,7 +684,7 @@ class _IntensityButton extends StatelessWidget {
         foregroundColor: AppColors.blue,
         disabledBackgroundColor: AppColors.line,
         disabledForegroundColor: AppColors.muted,
-        minimumSize: const Size(38, 38),
+        minimumSize: const Size(44, 44),
       ),
       icon: Icon(icon, size: 20),
     );
@@ -651,7 +747,7 @@ class _ChoiceSection extends StatelessWidget {
               for (final option in options)
                 ChoiceChip(
                   visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
                   label: Text(option),
                   selected: selected.contains(option),
                   onSelected: (_) => onSelected(option),
@@ -670,7 +766,7 @@ class _ChoiceSection extends StatelessWidget {
                 ),
               if (onAdd != null)
                 SizedBox.square(
-                    dimension: 32,
+                    dimension: 44,
                     child: IconButton.outlined(
                         key: ValueKey('add-option-$title'),
                         tooltip: 'Добавить свой вариант',
@@ -681,7 +777,7 @@ class _ChoiceSection extends StatelessWidget {
                             backgroundColor: Colors.white,
                             side: const BorderSide(color: AppColors.blue),
                             shape: const CircleBorder(),
-                            minimumSize: const Size(32, 32),
+                            minimumSize: const Size(44, 44),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                         icon: const Icon(Icons.add_rounded, size: 18))),
             ],

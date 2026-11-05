@@ -7,9 +7,11 @@ class DailyEntry {
     this.waterMl,
     this.caffeineIntake,
     this.stressLevel,
+    this.pendingSync = false,
   });
 
   factory DailyEntry.fromJson(Map<String, dynamic> json) => DailyEntry(
+        pendingSync: json['pending_sync'] == true,
         date: DateTime.parse(json['date'] as String),
         headachePresent: json['headache_present'] as bool?,
         sleepHours: (json['sleep_hours'] as num?)?.toDouble(),
@@ -19,6 +21,7 @@ class DailyEntry {
         stressLevel: json['stress_level'] as int?,
       );
 
+  final bool pendingSync;
   final DateTime date;
   final bool? headachePresent;
   final double? sleepHours;
@@ -26,6 +29,18 @@ class DailyEntry {
   final int? waterMl;
   final int? caffeineIntake;
   final int? stressLevel;
+
+  Map<String, dynamic> toJson() => {
+        'date':
+            '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+        'headache_present': headachePresent,
+        'sleep_hours': sleepHours,
+        'sleep_quality': sleepQuality,
+        'water_ml': waterMl,
+        'caffeine_intake': caffeineIntake,
+        'stress_level': stressLevel,
+        'pending_sync': pendingSync,
+      };
 
   String get summary {
     final parts = <String>[

@@ -9,8 +9,12 @@ class AttackRecord {
     this.medications = const [],
     this.reliefFactors = const [],
     this.endTime,
+    this.medicationEffects = const {},
+    this.pendingSync = false,
   });
 
+  final Map<String, String> medicationEffects;
+  final bool pendingSync;
   final int id;
   final DateTime startTime;
   final DateTime? endTime;
@@ -20,6 +24,20 @@ class AttackRecord {
   final String? painType;
   final List<String> medications;
   final List<String> reliefFactors;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'start_time': startTime.toUtc().toIso8601String(),
+        'end_time': endTime?.toUtc().toIso8601String(),
+        'intensity': intensity,
+        'localization': painLocation,
+        'symptoms': symptoms,
+        'pain_type': painType,
+        'medications': medications,
+        'relief_factors': reliefFactors,
+        'medication_effects': medicationEffects,
+        'pending_sync': pendingSync,
+      };
 
   bool get isActive => endTime == null;
 
@@ -40,9 +58,13 @@ class AttackRecord {
     bool clearPainType = false,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) {
     return AttackRecord(
       id: id,
+      pendingSync: pendingSync,
+      medicationEffects:
+          Map.unmodifiable(medicationEffects ?? this.medicationEffects),
       startTime: startTime ?? this.startTime,
       endTime: clearEndTime ? null : endTime ?? this.endTime,
       intensity: intensity ?? this.intensity,

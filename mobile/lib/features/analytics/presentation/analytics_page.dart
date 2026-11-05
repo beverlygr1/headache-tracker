@@ -5,12 +5,17 @@ import '../../../core/utils/russian_date.dart';
 import '../../tracker/presentation/widgets/common.dart';
 import '../data/analytics_dto.dart';
 import '../state/analytics_controller.dart';
+import 'report_page.dart';
+import '../../offline/data/local_workspace.dart';
 
 enum _Metric { count, intensity, duration }
 
 class AnalyticsPage extends StatefulWidget {
-  const AnalyticsPage({super.key, required this.controller});
+  const AnalyticsPage(
+      {super.key, required this.controller, this.timeZone, this.workspace});
   final AnalyticsController controller;
+  final String? timeZone;
+  final LocalWorkspace? workspace;
   @override
   State<AnalyticsPage> createState() => _AnalyticsPageState();
 }
@@ -49,6 +54,26 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               Text('Статистика',
                   style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 20),
+              OutlinedButton.icon(
+                key: const ValueKey('open-report'),
+                onPressed: () {
+                  final points = state.series?.points;
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => ReportPage(
+                          api: widget.controller.api,
+                          workspace: widget.workspace,
+                          timeZone:
+                              widget.timeZone ?? widget.controller.timeZone,
+                          initialRange: points == null || points.isEmpty
+                              ? null
+                              : DateTimeRange(
+                                  start: points.first.date,
+                                  end: points.last.date))));
+                },
+                icon: const Icon(Icons.description_outlined),
+                label: const Text('Отчёт для врача'),
+              ),
+              const SizedBox(height: 16),
               SegmentedButton<String>(
                 showSelectedIcon: false,
                 segments: const [
