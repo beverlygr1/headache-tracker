@@ -463,7 +463,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 onCreateAttack: () =>
                     _openEditor(widget.controller.activeAttack),
                 onOpenAttack: _openDetails,
-                onOpenDailyEntry: () => _openDailyEntry(),
+                onOpenDailyEntry: _openDailyEntry,
                 dailyEntries: _dailyEntries,
                 diaryError: _diaryError,
                 onRetryDiary: _loadDiary,
