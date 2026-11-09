@@ -7,6 +7,7 @@ SLEEP_LACK_HOURS = 6
 SLEEP_EXCESS_HOURS = 10
 CAFFEINE_EXCESS_MG = 400
 LAST_RECORDS = 7
+WEATHER_CHANGE_SIGNIFICANT = 2
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ def build_features(
     entries: list[DiaryValues],
     attack_dates: list[date],
     today: date,
+    weather_change_level: int | None = None,
 ) -> dict[str, int]:
     past = sorted((e for e in entries if e.date <= today), key=lambda e: e.date)
     today_entry = past[-1] if past and past[-1].date == today else None
@@ -43,6 +45,11 @@ def build_features(
             features["excessive_caffeine"] = int(
                 today_entry.caffeine_intake > CAFFEINE_EXCESS_MG
             )
+
+    if weather_change_level is not None:
+        features["weather_change"] = int(
+            weather_change_level == WEATHER_CHANGE_SIGNIFICANT
+        )
 
     days_since = cur
     for k in range(cur, -1, -1):

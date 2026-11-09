@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     ml_model_path: Path = Path(__file__).resolve().parents[1] / "ml" / "headache_next_day_model.joblib"
     ml_meta_path: Path = Path(__file__).resolve().parents[1] / "ml" / "model_meta.json"
 
+    open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
+    weather_timeout_seconds: float = 5.0
+    weather_pressure_moderate_hpa: float = 3.3
+    weather_pressure_significant_hpa: float = 6.7
+    weather_temperature_moderate_c: float = 2.5
+    weather_temperature_significant_c: float = 5.0
+
 
 @lru_cache
 def get_settings() -> Settings:
