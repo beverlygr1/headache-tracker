@@ -136,9 +136,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           selected: _metric == metric,
           child: AppCard(
             color: _metric == metric ? AppColors.bluePale : Colors.white,
-            border: BorderSide(
-                color: _metric == metric ? AppColors.blue : AppColors.line,
-                width: _metric == metric ? 1.5 : 1),
+            border: _metric == metric
+                ? const BorderSide(color: AppColors.blue, width: 1.5)
+                : BorderSide.none,
             onTap: () => _selectMetric(metric),
             child: Row(children: [
               Container(
@@ -213,7 +213,7 @@ class _DailyChartState extends State<_DailyChart> {
         : points.fold<double>(1, (max, p) => math.max(max, _value(p) ?? 0));
     final selected = _selected ?? (points.isEmpty ? null : points.length - 1);
     return AppCard(
-        border: const BorderSide(color: AppColors.line),
+        border: BorderSide.none,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
