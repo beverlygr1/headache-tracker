@@ -64,7 +64,7 @@ def test_headache_migration_preserves_history_and_unknown_labels(tmp_path, diale
                 db.execute(
                     sa.text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "0007_user_avatars"
+                == "0008_merge_weather_predictions"
             )
             db.execute(
                 sa.text("UPDATE diary_entries SET headache_present = :value"),

@@ -1,6 +1,16 @@
 from fastapi import APIRouter
 
-from app.api.routers import analytics, attacks, auth, diary, forecast, profile, medications, prevention
+from app.api.routers import (
+    analytics,
+    attacks,
+    auth,
+    diary,
+    forecast,
+    medications,
+    prevention,
+    profile,
+    weather,
+)
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
@@ -11,3 +21,4 @@ api_router.include_router(analytics.router)
 api_router.include_router(forecast.router)
 api_router.include_router(medications.router)
 api_router.include_router(prevention.router)
+api_router.include_router(weather.router)

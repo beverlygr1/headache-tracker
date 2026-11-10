@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.schemas.forecast import RiskForecastResponse
 from app.services import forecast
 from pydantic import ValidationError
 
-NOW = datetime(2026, 10, 20, 12, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 20, 12, tzinfo=UTC)
 COMPLETE = {"sleep_hours": 7.5, "stress_level": 4, "caffeine_intake": 0}
 
 
@@ -70,6 +70,7 @@ def test_empty_account_returns_no_probability_and_skips_model(client, model):
         "factors": [],
         "recommendations": [],
         "missing_fields": ["sleep_hours", "stress_level", "caffeine_intake"],
+        "weather": None,
         "message": "Для расчёта заполните сегодняшние значения сна, стресса и кофеина.",
     }
     assert model.inputs == []

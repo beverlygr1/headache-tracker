@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
+from app.schemas.weather import WeatherChangeResponse
+
 ForecastInputField = Literal["sleep_hours", "stress_level", "caffeine_intake"]
 
 
@@ -27,6 +29,7 @@ class RiskForecastResponse(BaseModel):
     recommendations: list[str] = Field(default_factory=list)
     missing_fields: list[ForecastInputField] = Field(default_factory=list)
     message: str | None = None
+    weather: WeatherChangeResponse | None = None
 
     @model_validator(mode="after")
     def validate_status(self):
