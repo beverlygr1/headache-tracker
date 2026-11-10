@@ -12,6 +12,7 @@ from app.schemas.analytics import (
     PeriodEnum,
 )
 from app.services import analytics as analytics_service
+from app.services.reports import export_pdf
 
 router = APIRouter(prefix="/analytics", tags=["Аналитика"])
 
@@ -59,11 +60,13 @@ def export_analytics(
     format: Annotated[ExportFormatEnum, Query()],
     from_date: Annotated[date | None, Query()] = None,
     to_date: Annotated[date | None, Query()] = None,
+    time_zone: Annotated[str | None, Query(max_length=64)] = None,
 ) -> Response:
     if format == ExportFormatEnum.pdf:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="PDF-экспорт пока не реализован. Используйте format=csv.",
+        return Response(
+            content=export_pdf(db, current_user, from_date, to_date, time_zone or current_user.time_zone or "UTC"),
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=headache-report.pdf", "Cache-Control": "no-store"},
         )
     content = analytics_service.export_csv(db, current_user.id, from_date, to_date)
     return Response(

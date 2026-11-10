@@ -63,7 +63,7 @@ class ForecastCard extends StatelessWidget {
           predictionDate.day - 1,
         );
         final title = 'Прогноз на ${RussianDate.dayMonth(predictionDate)}';
-        final openEntry = () => onOpenDailyEntry(entryDate);
+        void openEntry() => onOpenDailyEntry(entryDate);
         if (!data.isReady) {
           return _card(
             title,

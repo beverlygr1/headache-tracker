@@ -1,6 +1,10 @@
 from datetime import date, datetime, time, timedelta, timezone
+import hashlib
+import json
 
+from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.attack import Attack
@@ -15,9 +19,37 @@ def _next_day_start(value: date) -> datetime:
 
 
 def create_attack(db: Session, user_id: int, values: dict) -> Attack:
+    request_id = values.get("client_request_id")
+    if request_id is not None:
+        values = dict(values, client_request_id=str(request_id))
+        fingerprint = hashlib.sha256(json.dumps(
+            {k: v for k, v in values.items() if k != "client_request_id"},
+            sort_keys=True, ensure_ascii=False, default=str,
+        ).encode()).hexdigest()
+        values["client_payload_hash"] = fingerprint
+
+        def existing_request():
+            existing = db.scalar(select(Attack).where(
+                Attack.user_id == user_id, Attack.client_request_id == str(request_id)
+            ))
+            if existing is not None and existing.client_payload_hash != fingerprint:
+                raise HTTPException(status_code=409, detail="Этот идентификатор уже использован для другой записи")
+            return existing
+
+        existing = existing_request()
+        if existing is not None:
+            return existing
     attack = Attack(user_id=user_id, **values)
     db.add(attack)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        if request_id is not None:
+            existing = existing_request()
+            if existing is not None:
+                return existing
+        raise
     db.refresh(attack)
     return attack
 

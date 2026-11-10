@@ -1,8 +1,10 @@
 import '../../../core/api/api_client.dart';
 import 'attack_dto.dart';
+import '../../offline/data/local_workspace.dart';
 
 class AttacksApi {
-  AttacksApi(this._client);
+  AttacksApi(this._client, {this.workspace});
+  final LocalWorkspace? workspace;
 
   final ApiClient _client;
 
@@ -17,10 +19,12 @@ class AttacksApi {
     List<String>? medications,
     List<String>? symptoms,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) async {
-    final response = await _client.post<Map<String, dynamic>>(
-      '/attacks',
-      data: {
+    final result = await _write(
+      'POST',
+      null,
+      {
         'start_time': formatApiDateTime(startTime),
         'intensity': intensity,
         if (painType != null) 'pain_type': painType,
@@ -28,10 +32,11 @@ class AttacksApi {
         if (medications != null) 'medications': medications,
         if (symptoms != null) 'symptoms': symptoms,
         if (reliefFactors != null) 'relief_factors': reliefFactors,
+        if (medicationEffects != null) 'medication_effects': medicationEffects,
       },
     );
 
-    return AttackDto.fromJson(_requireBody(response.data));
+    return AttackDto.fromJson(result);
   }
 
   Future<AttackDto> update(
@@ -45,10 +50,12 @@ class AttacksApi {
     List<String>? medications,
     List<String>? symptoms,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) async {
-    final response = await _client.put<Map<String, dynamic>>(
-      '/attacks/$id',
-      data: {
+    final result = await _write(
+      'PUT',
+      id,
+      {
         if (startTime != null) 'start_time': formatApiDateTime(startTime),
         if (endTime != null) 'end_time': formatApiDateTime(endTime),
         if (intensity != null) 'intensity': intensity,
@@ -57,10 +64,11 @@ class AttacksApi {
         if (medications != null) 'medications': medications,
         if (symptoms != null) 'symptoms': symptoms,
         if (reliefFactors != null) 'relief_factors': reliefFactors,
+        if (medicationEffects != null) 'medication_effects': medicationEffects,
       },
     );
 
-    return AttackDto.fromJson(_requireBody(response.data));
+    return AttackDto.fromJson(result);
   }
 
   Future<List<AttackDto>> getList({
@@ -91,7 +99,23 @@ class AttacksApi {
   }
 
   Future<void> delete(int id) async {
+    if (workspace != null) {
+      await workspace!.write('attacks', 'DELETE', {}, entity: '$id');
+      return;
+    }
     await _client.delete<void>('/attacks/$id');
+  }
+
+  Future<Map<String, dynamic>> _write(
+      String method, int? id, Map<String, dynamic> body) async {
+    if (workspace != null) {
+      return (await workspace!
+          .write('attacks', method, body, entity: id?.toString()))!;
+    }
+    final response = method == 'POST'
+        ? await _client.post<Map<String, dynamic>>('/attacks', data: body)
+        : await _client.put<Map<String, dynamic>>('/attacks/$id', data: body);
+    return _requireBody(response.data);
   }
 
   Map<String, dynamic> _requireBody(Map<String, dynamic>? data) {

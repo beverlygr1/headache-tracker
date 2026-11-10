@@ -60,6 +60,15 @@ def update_attack(
             status_code=status.HTTP_404_NOT_FOUND, detail="Приступ не найден"
         )
     values = data.model_dump(exclude_unset=True)
+    medications = values.get("medications", attack.medications) or []
+    if "medication_effects" in values:
+        if not set(values["medication_effects"]).issubset(medications):
+            raise HTTPException(status_code=422, detail="Результат можно указать только для выбранного препарата")
+    elif "medications" in values:
+        values["medication_effects"] = {
+            name: effect for name, effect in (attack.medication_effects or {}).items()
+            if name in medications
+        }
     if "intensity" in values and values["intensity"] is None:
         raise HTTPException(status_code=422, detail="intensity не может быть пустым")
     start_time = values.get("start_time", attack.start_time)

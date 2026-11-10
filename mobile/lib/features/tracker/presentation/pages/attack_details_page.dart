@@ -4,6 +4,7 @@ import '../../../../app/theme.dart';
 import '../../../../core/utils/pain_intensity.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../../attacks/data/medications_api.dart';
+import '../../../attacks/presentation/widgets/medication_effects_field.dart';
 import '../../domain/attack_record.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
@@ -41,6 +42,13 @@ class AttackDetailsPage extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
               children: [
+                if (record.pendingSync)
+                  const Padding(
+                      padding: EdgeInsets.only(bottom: 14),
+                      child: AppCard(
+                          color: AppColors.bluePale,
+                          child: Text(
+                              'Сохранено на устройстве. Ожидает отправки на сервер.'))),
                 AppCard(
                   color: AppColors.blueSoft,
                   child: Column(
@@ -268,7 +276,11 @@ class _AttackFacts extends StatelessWidget {
             label: 'Препараты',
             value: record.medications.isEmpty
                 ? 'Не указаны'
-                : record.medications.join(', '),
+                : record.medications
+                    .map((name) => record.medicationEffects[name] == null
+                        ? name
+                        : '$name — ${medicationEffectLabels[record.medicationEffects[name]]}')
+                    .join('\n'),
           ),
           const Divider(height: 28),
           _AttackFact(

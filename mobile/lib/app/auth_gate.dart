@@ -7,6 +7,7 @@ import '../features/auth/presentation/auth_page.dart';
 import '../features/auth/state/auth_controller.dart';
 import '../features/diary/data/diary_api.dart';
 import '../features/diary/data/diary_repository.dart';
+import '../features/offline/data/local_workspace.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 import '../features/reminders/state/reminder_controller.dart';
 import '../features/settings/presentation/server_address_dialog.dart';
@@ -24,12 +25,14 @@ class AuthGate extends StatefulWidget {
     this.apiClient,
     this.serverSettings,
     this.reminderController,
+    this.enableLocalPersistence = false,
     super.key,
   });
 
   final AuthController authController;
   final AttacksApi attacksApi;
   final DiaryApi diaryApi;
+  final bool enableLocalPersistence;
   final ApiClient? apiClient;
 
   /// Адрес сервера, который можно поменять в приложении. `null` в тестах.
@@ -44,6 +47,7 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   TrackerController? _tracker;
+  LocalWorkspace? _workspace;
   OnboardingAction _initialAction = OnboardingAction.today;
 
   Future<void> _finishOnboarding(OnboardingAction action) async {
@@ -68,6 +72,7 @@ class _AuthGateState extends State<AuthGate> {
   void dispose() {
     widget.authController.removeListener(_onAuthChanged);
     _tracker?.dispose();
+    _workspace?.dispose();
     super.dispose();
   }
 
@@ -86,14 +91,28 @@ class _AuthGateState extends State<AuthGate> {
         widget.authController.status == AuthStatus.authenticated;
 
     // Данные предыдущего пользователя не переживают выход из аккаунта.
-    if (authenticated && _tracker == null) {
+    if (authenticated &&
+        _tracker == null &&
+        widget.authController.profile != null) {
+      if (widget.enableLocalPersistence && widget.apiClient != null) {
+        _workspace = LocalWorkspace(
+            client: widget.apiClient!,
+            accountScope: widget.apiClient!
+                .scopeForSubject('${widget.authController.profile!.id}'));
+      }
       _tracker = TrackerController(
-        repository: ApiAttackRepository(widget.attacksApi),
+        repository: ApiAttackRepository(_workspace == null
+            ? widget.attacksApi
+            : AttacksApi(widget.apiClient!, workspace: _workspace)),
+        workspace: _workspace,
       );
     } else if (!authenticated && _tracker != null) {
       // Закрываемые экраны ещё держат контроллер до конца кадра.
       final tracker = _tracker!;
       WidgetsBinding.instance.addPostFrameCallback((_) => tracker.dispose());
+      final workspace = _workspace;
+      WidgetsBinding.instance.addPostFrameCallback((_) => workspace?.dispose());
+      _workspace = null;
       _tracker = null;
       _initialAction = OnboardingAction.today;
     }
@@ -144,7 +163,9 @@ class _AuthGateState extends State<AuthGate> {
           apiClient: widget.apiClient,
           serverSettings: widget.serverSettings,
           reminderController: widget.reminderController,
-          diaryRepository: ApiDiaryRepository(widget.diaryApi),
+          diaryRepository: ApiDiaryRepository(_workspace == null
+              ? widget.diaryApi
+              : DiaryApi(widget.apiClient!, workspace: _workspace)),
           initialAction: _initialAction,
           userName: widget.authController.profile?.name,
           timeZone: widget.authController.profile?.timeZone ?? 'UTC',

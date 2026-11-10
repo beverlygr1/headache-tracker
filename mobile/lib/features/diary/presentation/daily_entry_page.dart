@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../offline/data/local_workspace.dart';
+import '../../offline/presentation/persistent_draft.dart';
 import '../../../core/utils/russian_date.dart';
 import '../../tracker/presentation/widgets/common.dart';
 import '../../tracker/state/tracker_controller.dart';
@@ -11,16 +13,43 @@ class DailyEntryPage extends StatefulWidget {
   const DailyEntryPage({
     required this.repository,
     required this.date,
+    this.workspace,
     super.key,
   });
   final DiaryRepository repository;
   final DateTime date;
+  final LocalWorkspace? workspace;
 
   @override
   State<DailyEntryPage> createState() => _DailyEntryPageState();
 }
 
-class _DailyEntryPageState extends State<DailyEntryPage> {
+class _DailyEntryPageState extends State<DailyEntryPage>
+    with PersistentDraft<DailyEntryPage> {
+  @override
+  LocalWorkspace? get draftWorkspace => widget.workspace;
+  @override
+  String get draftKey =>
+      'daily:${DailyEntry(date: widget.date).toJson()['date']}';
+  @override
+  Map<String, dynamic> captureDraft() => {
+        'sleep': _sleep.text,
+        'water': _water.text,
+        'caffeine': _caffeine.text,
+        'headache': _headachePresent,
+        'quality': _sleepQuality,
+        'stress': _stress,
+      };
+  @override
+  void applyDraft(Map<String, dynamic> values) {
+    _sleep.text = values['sleep'] as String;
+    _water.text = values['water'] as String;
+    _caffeine.text = values['caffeine'] as String;
+    _headachePresent = values['headache'] as bool?;
+    _sleepQuality = values['quality'] as int?;
+    _stress = values['stress'] as int?;
+  }
+
   final _formKey = GlobalKey<FormState>();
   final _sleep = TextEditingController();
   final _water = TextEditingController();
@@ -37,6 +66,9 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
   @override
   void initState() {
     super.initState();
+    _sleep.addListener(persistDraft);
+    _water.addListener(persistDraft);
+    _caffeine.addListener(persistDraft);
     _load();
   }
 
@@ -49,6 +81,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
   }
 
   Future<void> _load() async {
+    suspendDraft();
     setState(() {
       _loading = true;
       _loadError = null;
@@ -68,7 +101,13 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
     } catch (error) {
       if (mounted) _loadError = describeError(error);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) await restoreDraft();
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          if (draftRestored) _loadError = null;
+        });
+      }
     }
   }
 
@@ -90,17 +129,18 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
     });
     FocusManager.instance.primaryFocus?.unfocus();
     try {
-      final entry = await widget.repository.save(
-        DailyEntry(
-          date: widget.date,
-          headachePresent: _headachePresent,
-          sleepHours: double.tryParse(_sleep.text.trim().replaceAll(',', '.')),
-          sleepQuality: _sleepQuality,
-          waterMl: int.tryParse(_water.text.trim()),
-          caffeineIntake: int.tryParse(_caffeine.text.trim()),
-          stressLevel: _stress,
-        ),
-      );
+      final entry = await saveWithDraft(() => widget.repository.save(
+            DailyEntry(
+              date: widget.date,
+              headachePresent: _headachePresent,
+              sleepHours:
+                  double.tryParse(_sleep.text.trim().replaceAll(',', '.')),
+              sleepQuality: _sleepQuality,
+              waterMl: int.tryParse(_water.text.trim()),
+              caffeineIntake: int.tryParse(_caffeine.text.trim()),
+              stressLevel: _stress,
+            ),
+          ));
       if (mounted) Navigator.of(context).pop(entry);
     } catch (error) {
       if (mounted) setState(() => _saveError = describeError(error));
@@ -126,6 +166,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                       children: [
+                        if (draftRestored || draftError != null) draftNotice,
                         Text(
                           RussianDate.dayMonth(widget.date),
                           style: Theme.of(context).textTheme.headlineSmall,
@@ -162,7 +203,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                     selectedColor: AppColors.blueSoft,
                                     onSelected: _saving
                                         ? null
-                                        : (selected) => setState(
+                                        : (selected) => draftChange(
                                               () => _headachePresent =
                                                   selected ? true : null,
                                             ),
@@ -175,7 +216,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                                     selectedColor: AppColors.mint,
                                     onSelected: _saving
                                         ? null
-                                        : (selected) => setState(
+                                        : (selected) => draftChange(
                                               () => _headachePresent =
                                                   selected ? false : null,
                                             ),
@@ -239,7 +280,7 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                           enabled: !_saving,
                           keyPrefix: 'sleep-quality',
                           onChanged: (value) =>
-                              setState(() => _sleepQuality = value),
+                              draftChange(() => _sleepQuality = value),
                         ),
                         const SizedBox(height: 16),
                         WaterTrackerCard(controller: _water, enabled: !_saving),
@@ -254,7 +295,8 @@ class _DailyEntryPageState extends State<DailyEntryPage> {
                           value: _stress,
                           enabled: !_saving,
                           keyPrefix: 'stress',
-                          onChanged: (value) => setState(() => _stress = value),
+                          onChanged: (value) =>
+                              draftChange(() => _stress = value),
                         ),
                         const SizedBox(height: 16),
                         const AppCard(

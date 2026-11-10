@@ -1,11 +1,16 @@
 from datetime import datetime
+from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.types import ensure_utc
 
+MedicationEffect = Literal["helped", "partly", "not_helped"]
+
 
 class AttackCreateRequest(BaseModel):
+    client_request_id: UUID | None = None
     start_time: datetime
     intensity: int = Field(..., ge=1, le=10)
     pain_type: str | None = Field(None, max_length=80)
@@ -13,6 +18,13 @@ class AttackCreateRequest(BaseModel):
     medications: list[str] | None = None
     symptoms: list[str] | None = None
     relief_factors: list[str] | None = None
+    medication_effects: dict[str, MedicationEffect] = Field(default_factory=dict, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_effects(self):
+        if not set(self.medication_effects).issubset(self.medications or []):
+            raise ValueError("Результат можно указать только для выбранного препарата")
+        return self
 
     @field_validator("start_time")
     @classmethod
@@ -29,6 +41,7 @@ class AttackUpdateRequest(BaseModel):
     medications: list[str] | None = None
     symptoms: list[str] | None = None
     relief_factors: list[str] | None = None
+    medication_effects: dict[str, MedicationEffect] = Field(default_factory=dict, max_length=100)
 
     @field_validator("start_time", "end_time")
     @classmethod
@@ -49,6 +62,7 @@ class AttackResponse(BaseModel):
     medications: list[str] | None = None
     symptoms: list[str] | None = None
     relief_factors: list[str] | None = None
+    medication_effects: dict[str, MedicationEffect] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_times(self):

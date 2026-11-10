@@ -5,6 +5,8 @@ class AttackDto {
     required this.startTime,
     required this.intensity,
     this.endTime,
+    this.medicationEffects = const {},
+    this.pendingSync = false,
     this.painType,
     this.localization,
     this.medications = const [],
@@ -16,6 +18,9 @@ class AttackDto {
     final endTime = json['end_time'];
     return AttackDto(
       id: json['id'] as int,
+      medicationEffects:
+          Map<String, String>.from(json['medication_effects'] as Map? ?? {}),
+      pendingSync: json['pending_sync'] == true,
       startTime: parseApiDateTime(json['start_time'] as String),
       endTime: endTime is String ? parseApiDateTime(endTime) : null,
       intensity: json['intensity'] as int,
@@ -27,6 +32,8 @@ class AttackDto {
     );
   }
 
+  final Map<String, String> medicationEffects;
+  final bool pendingSync;
   final int id;
 
   /// Время в локальной зоне устройства.

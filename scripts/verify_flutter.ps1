@@ -71,7 +71,7 @@ if ($RunDemo) {
     $taskMode = 'app'
     $taskResultName = 'app-result.json'
     $taskChecks = @(
-        @{ Name = 'app'; Arguments = @('run', '-d', 'chrome', '--dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1') }
+        @{ Name = 'app'; Arguments = @('run', '-d', 'chrome', '--web-port=8732', '--dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1') }
     )
 }
 $taskFailed = $false

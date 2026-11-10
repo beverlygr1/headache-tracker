@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/utils/russian_date.dart';
 import '../../domain/attack_draft.dart';
+import '../../../attacks/presentation/widgets/medication_effects_field.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
 
@@ -11,11 +12,13 @@ class AttackReviewPage extends StatefulWidget {
   const AttackReviewPage({
     required this.controller,
     required this.draft,
+    this.submit,
     super.key,
   });
 
   final TrackerController controller;
   final AttackDraft draft;
+  final Future<void> Function(Future<void> Function())? submit;
 
   @override
   State<AttackReviewPage> createState() => _AttackReviewPageState();
@@ -37,17 +40,19 @@ class _AttackReviewPageState extends State<AttackReviewPage> {
     });
     try {
       final draft = widget.draft;
-      await widget.controller.saveAttack(
-        id: draft.id,
-        startTime: draft.startTime,
-        intensity: draft.intensity,
-        painLocation: draft.painLocation,
-        symptoms: draft.symptoms,
-        painType: draft.painType,
-        clearPainType: true,
-        medications: draft.medications,
-        reliefFactors: draft.reliefFactors,
-      );
+      Future<void> save() => widget.controller.saveAttack(
+            id: draft.id,
+            startTime: draft.startTime,
+            intensity: draft.intensity,
+            painLocation: draft.painLocation,
+            symptoms: draft.symptoms,
+            painType: draft.painType,
+            clearPainType: true,
+            medications: draft.medications,
+            reliefFactors: draft.reliefFactors,
+            medicationEffects: draft.medicationEffects,
+          );
+      await (widget.submit?.call(save) ?? save());
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (mounted) setState(() => _error = describeError(error));
@@ -157,6 +162,11 @@ class _AttackReviewPageState extends State<AttackReviewPage> {
                             ),
                             const SizedBox(height: 10),
                             _FactChips(values: draft.medications),
+                            for (final item in draft.medicationEffects.entries)
+                              Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                      '${item.key}: ${medicationEffectLabels[item.value] ?? item.value}')),
                           ],
                           if (draft.reliefFactors.isNotEmpty) ...[
                             const Divider(height: 26),

@@ -18,6 +18,7 @@ import '../../diary/presentation/daily_entry_page.dart';
 import '../../forecast/data/forecast_api.dart';
 import '../../forecast/state/forecast_controller.dart';
 import '../../onboarding/presentation/onboarding_page.dart';
+import '../../offline/presentation/sync_status_banner.dart';
 import '../../profile/presentation/profile_avatar.dart';
 import '../../reminders/presentation/reminder_settings_page.dart';
 import '../../reminders/state/reminder_controller.dart';
@@ -75,6 +76,30 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
+  Timer? _syncTimer;
+  int _previousPending = 0;
+
+  void _workspaceChanged() {
+    final count = widget.controller.workspace?.pendingCount ?? 0;
+    final completed = _previousPending > 0 && count == 0;
+    _previousPending = count;
+    if (completed && mounted) {
+      unawaited(widget.controller.load().catchError((Object error) {
+        if (mounted) showErrorSnackBar(context, describeError(error));
+      }));
+      unawaited(_loadDiary());
+    }
+  }
+
+  Future<void> _syncPending() async {
+    try {
+      await widget.controller.workspace?.sync();
+    } catch (_) {
+      // Local storage errors are also shown when the form is saved; a
+      // background retry must not surface as an uncaught asynchronous error.
+    }
+  }
+
   DateTime get _now => widget.now?.call() ?? DateTime.now();
   late DateTime _today;
   Timer? _dayTimer;
@@ -109,6 +134,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
 
     widget.reminderController?.addListener(_onReminderChanged);
+    widget.controller.workspace?.addListener(_workspaceChanged);
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      final workspace = widget.controller.workspace;
+      if ((WidgetsBinding.instance.lifecycleState == null ||
+              WidgetsBinding.instance.lifecycleState ==
+                  AppLifecycleState.resumed) &&
+          workspace != null &&
+          workspace.pendingCount > 0) {
+        unawaited(_syncPending());
+      }
+    });
+    unawaited(_syncPending());
     _initialize();
   }
 
@@ -116,6 +153,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _dayTimer?.cancel();
+    _syncTimer?.cancel();
+    widget.controller.workspace?.removeListener(_workspaceChanged);
     if (widget.forecastController == null) _forecastController?.dispose();
     widget.reminderController?.removeListener(_onReminderChanged);
     // Освобождаем контроллер аналитики только если создавали его внутри
@@ -147,6 +186,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkDay();
+      unawaited(_syncPending());
     }
   }
 
@@ -216,8 +256,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   Future<void> _openDailyEntry([DateTime? date]) async {
     final entry =
         await Navigator.of(context).push<DailyEntry>(MaterialPageRoute(
-      builder: (_) =>
-          DailyEntryPage(repository: _diaryRepository, date: date ?? _now),
+      builder: (_) => DailyEntryPage(
+          repository: _diaryRepository,
+          date: date ?? _now,
+          workspace: widget.controller.workspace),
     ));
     if (entry == null || !mounted) return;
     setState(() {
@@ -226,8 +268,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _dailyEntries.add(entry);
       _dailyEntries.sort((a, b) => b.date.compareTo(a.date));
     });
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Самочувствие сохранено')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(entry.pendingSync
+            ? 'Сохранено на устройстве. Отправим при подключении.'
+            : 'Самочувствие сохранено')));
     _forecastController?.refresh();
   }
 
@@ -244,6 +288,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Future<void> _refresh() async {
     _checkDay();
+    await _syncPending();
     _forecastController?.refresh();
     try {
       await widget.controller.load();
@@ -484,6 +529,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 page = AnalyticsPage(
                   key: const ValueKey('analytics'),
                   controller: _analyticsController!,
+                  timeZone: widget.timeZone,
+                  workspace: widget.controller.workspace,
                 );
               } else {
                 page = const Center(
@@ -506,7 +553,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          body: body,
+          body: widget.controller.workspace == null
+              ? body
+              : SafeArea(
+                  bottom: false,
+                  child: Column(children: [
+                    SyncStatusBanner(
+                        workspace: widget.controller.workspace!,
+                        onRetry: _refresh),
+                    Expanded(child: body),
+                  ]),
+                ),
           bottomNavigationBar: SafeArea(
             top: false,
             child: AppBottomNavigation(

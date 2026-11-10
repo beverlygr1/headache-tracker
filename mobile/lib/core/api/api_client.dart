@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
@@ -15,6 +17,14 @@ class ApiClient {
           InterceptorsWrapper(
             onRequest: (options, handler) async {
               final token = await this.tokenStorage.getAccessToken();
+              final expected = options.extra['account_scope'];
+              if (expected != null && expected != scopeForToken(token)) {
+                return handler.reject(DioException(
+                  requestOptions: options,
+                  type: DioExceptionType.cancel,
+                  message: 'Аккаунт изменился. Отправка остановлена.',
+                ));
+              }
 
               if (token != null && token.isNotEmpty) {
                 options.headers['Authorization'] = 'Bearer $token';
@@ -50,6 +60,40 @@ class ApiClient {
   /// Адрес API, например `http://192.168.1.50:8000/api/v1`. Меняется на лету
   /// из настроек приложения, без пересборки APK.
   String get baseUrl => dio.options.baseUrl;
+
+  String scopeForSubject(String subject) =>
+      base64Url.encode(utf8.encode(jsonEncode([baseUrl, subject])));
+
+  String? scopeForToken(String? token) {
+    try {
+      final parts = token!.split('.');
+      final payload = jsonDecode(
+              utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))))
+          as Map<String, dynamic>;
+      final subject = payload['sub'];
+      if (subject == null) return null;
+      return scopeForSubject(subject.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> accountScope() async =>
+      scopeForToken(await tokenStorage.getAccessToken());
+
+  Future<Map<String, dynamic>?> sendForAccount(String scope, String method,
+      String path, Map<String, dynamic> data) async {
+    try {
+      final response = await dio.request<dynamic>(path,
+          data: data.isEmpty ? null : data,
+          options: Options(method: method, extra: {'account_scope': scope}));
+      return response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : null;
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
 
   set baseUrl(String value) {
     dio.options.baseUrl = value;

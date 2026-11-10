@@ -2,12 +2,13 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../data/attack_repository.dart';
+import '../../offline/data/local_workspace.dart';
 import '../domain/attack_record.dart';
 
 enum TrackerStatus { initial, loading, ready, failure }
 
 class TrackerController extends ChangeNotifier {
-  TrackerController({required AttackRepository repository})
+  TrackerController({required AttackRepository repository, this.workspace})
       : _repository = repository;
 
   factory TrackerController.demo() {
@@ -37,6 +38,7 @@ class TrackerController extends ChangeNotifier {
   }
 
   final AttackRepository _repository;
+  final LocalWorkspace? workspace;
   final List<AttackRecord> _records = [];
 
   TrackerStatus _status = TrackerStatus.initial;
@@ -70,8 +72,13 @@ class TrackerController extends ChangeNotifier {
   }
 
   AttackRecord? byId(int id) {
+    final requested = id;
+    id = workspace?.resolveAttackId(id) ?? id;
     for (final record in _records) {
       if (record.id == id) return record;
+    }
+    for (final record in _records) {
+      if (record.id == requested) return record;
     }
     return null;
   }
@@ -112,9 +119,10 @@ class TrackerController extends ChangeNotifier {
     bool clearPainType = false,
     List<String>? medications,
     List<String>? reliefFactors,
+    Map<String, String>? medicationEffects,
   }) {
     return _save(() {
-      if (id != null && byId(id) != null) {
+      if (id != null) {
         return _repository.update(
           id,
           startTime: startTime,
@@ -125,6 +133,7 @@ class TrackerController extends ChangeNotifier {
           clearPainType: clearPainType,
           medications: medications,
           reliefFactors: reliefFactors,
+          medicationEffects: medicationEffects,
         );
       }
       return _repository.create(
@@ -135,6 +144,7 @@ class TrackerController extends ChangeNotifier {
         painType: painType,
         medications: medications,
         reliefFactors: reliefFactors,
+        medicationEffects: medicationEffects,
       );
     });
   }
@@ -155,8 +165,10 @@ class TrackerController extends ChangeNotifier {
     _isSaving = true;
     _notify();
     try {
+      final resolved = workspace?.resolveAttackId(id) ?? id;
       await _repository.delete(id);
-      _records.removeWhere((record) => record.id == id);
+      _records
+          .removeWhere((record) => record.id == id || record.id == resolved);
     } finally {
       _isSaving = false;
       _notify();
@@ -176,6 +188,9 @@ class TrackerController extends ChangeNotifier {
   }
 
   void _upsert(AttackRecord record) {
+    _records.removeWhere((item) =>
+        item.id != record.id &&
+        (workspace?.resolveAttackId(item.id) ?? item.id) == record.id);
     final index = _records.indexWhere((item) => item.id == record.id);
     if (index == -1) {
       _records.add(record);
