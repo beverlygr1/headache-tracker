@@ -1,6 +1,6 @@
-from datetime import date, datetime, time, timedelta, timezone
 import hashlib
 import json
+from datetime import UTC, date, datetime, time, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -11,7 +11,7 @@ from app.models.attack import Attack
 
 
 def _day_start(value: date) -> datetime:
-    return datetime.combine(value, time.min, tzinfo=timezone.utc)
+    return datetime.combine(value, time.min, tzinfo=UTC)
 
 
 def _next_day_start(value: date) -> datetime:

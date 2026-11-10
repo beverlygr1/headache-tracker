@@ -41,8 +41,22 @@ lib/features/profile/data/user_profile.dart   модель профиля
 lib/features/tracker/data/attack_repository.dart  API ↔ доменная модель AttackRecord
 lib/features/tracker/state/tracker_controller.dart  загрузка, сохранение, ошибки
 lib/features/auth/state/auth_controller.dart   сессия, вход, регистрация, выход
+lib/features/forecast/data/forecast_api.dart   GET /forecast/risk
+lib/features/forecast/data/forecast_data.dart   статус, вероятность и даты из ответа
+lib/features/forecast/state/forecast_controller.dart  загрузка прогноза и обработка ошибок
 ```
 
+### Прогноз на экране «Сегодня»
+
+Карточка «Личный прогноз» берёт данные из `GET /forecast/risk`
+(`<API_BASE_URL>/forecast/risk`, адрес задаётся тем же `API_BASE_URL`).
+
+- При `ready` карточка показывает вероятность на следующий день.
+- При `insufficient_data` карточка предлагает заполнить сегодняшний дневник.
+  Для прогноза нужны сон, стресс и кофеин. Сетевые ошибки и временная
+  недоступность модели отображаются в карточке.
+- Прогноз обновляется при открытии приложения, обновлении экрана,
+  сохранении приступа или дневника. В демо-режиме запрос не выполняется.
 - Первая загрузка показывает индикатор, при ошибке — экран с кнопкой «Повторить».
 - Списки обновляются жестом pull-to-refresh.
 - Ошибки сохранения показываются на экране проверки или во всплывающем

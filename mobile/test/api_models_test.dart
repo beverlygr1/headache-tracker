@@ -5,6 +5,7 @@ import 'package:headache_tracker_app/core/api/api_client.dart';
 import 'package:headache_tracker_app/core/storage/token_storage.dart';
 import 'package:headache_tracker_app/features/attacks/data/attacks_api.dart';
 import 'package:headache_tracker_app/features/attacks/data/attack_dto.dart';
+import 'package:headache_tracker_app/features/forecast/data/forecast_api.dart';
 
 void main() {
   group('AttackDto', () {
@@ -100,6 +101,32 @@ void main() {
     expect(updatedPayload['pain_type'], isNull);
     expect(updatedPayload['medications'], isEmpty);
     expect(updatedPayload['relief_factors'], isEmpty);
+  });
+
+  test('forecast API sends coordinates and parses the current contract', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      expect(options.path, '/forecast/risk');
+      expect(options.queryParameters, {'latitude': 56.5, 'longitude': 84.97});
+      handler.resolve(Response<Map<String, dynamic>>(
+        requestOptions: options,
+        statusCode: 200,
+        data: {
+          'status': 'ready',
+          'prediction_date': '2026-11-11',
+          'time_zone': 'Asia/Tomsk',
+          'probability': 0.42,
+          'weather': {'weather_change': 2},
+        },
+      ));
+    }));
+    final api = ForecastApi(ApiClient(dio: dio, tokenStorage: _NoTokens()));
+
+    final forecast = await api.getRisk(latitude: 56.5, longitude: 84.97);
+
+    expect(forecast.isReady, isTrue);
+    expect(forecast.probability, 0.42);
+    expect(forecast.predictionDate, DateTime(2026, 11, 11));
   });
 
   group('ApiException', () {

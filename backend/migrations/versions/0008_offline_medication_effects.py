@@ -3,8 +3,8 @@
 Revision ID: 0008_offline_medication_effects
 Revises: 0007_user_avatars
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0008_offline_medication_effects"
 down_revision = "0007_user_avatars"

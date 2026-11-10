@@ -1,10 +1,9 @@
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
-from pypdf import PdfReader
-
 from app.services import analytics
+from pypdf import PdfReader
 
 
 def account(client, email="new-flows@example.com", name="Пациент"):
@@ -68,7 +67,7 @@ def test_offline_identifiers_and_results_are_scoped_to_account(client):
 
 
 def fixed_now(monkeypatch):
-    monkeypatch.setattr(analytics, "_now", lambda: datetime(2026, 11, 10, 12, tzinfo=timezone.utc))
+    monkeypatch.setattr(analytics, "_now", lambda: datetime(2026, 11, 10, 12, tzinfo=UTC))
 
 
 def pdf(client, headers, **params):

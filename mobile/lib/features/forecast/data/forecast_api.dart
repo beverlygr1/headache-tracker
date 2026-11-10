@@ -1,22 +1,27 @@
 import '../../../core/api/api_client.dart';
+import 'forecast_data.dart';
 
 class ForecastApi {
   ForecastApi(this._client);
 
   final ApiClient _client;
 
-  Future<Map<String, dynamic>> getRisk({
+  Future<ForecastData> getRisk({
     double? latitude,
     double? longitude,
   }) async {
     final response = await _client.get<Map<String, dynamic>>(
       '/forecast/risk',
       queryParameters: {
-        if (latitude != null) 'lat': latitude,
-        if (longitude != null) 'lon': longitude,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       },
     );
 
-    return response.data ?? <String, dynamic>{};
+    final data = response.data;
+    if (data == null) {
+      throw StateError('Пустой ответ от /forecast/risk');
+    }
+    return ForecastData.fromJson(data);
   }
 }

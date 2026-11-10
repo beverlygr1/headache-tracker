@@ -15,7 +15,7 @@ class ForecastState {
 
 class ForecastController extends ValueNotifier<ForecastState> {
   ForecastController(ForecastApi api)
-      : this.withLoader(() async => ForecastData.fromJson(await api.getRisk()));
+      : this.withLoader(api.getRisk);
   ForecastController.withLoader(this._load) : super(const ForecastState());
   final Future<ForecastData> Function() _load;
   bool _disposed = false;
