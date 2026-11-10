@@ -21,6 +21,7 @@ class DiaryEntry(TimestampMixin, Base):
     stress_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     caffeine_intake: Mapped[int | None] = mapped_column(Integer, nullable=True)
     water_ml: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    physical_fatigue: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 

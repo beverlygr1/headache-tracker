@@ -59,6 +59,7 @@ def _prediction_input(
             sleep_hours=e.sleep_hours,
             stress_level=e.stress_level,
             caffeine_intake=e.caffeine_intake,
+            physical_fatigue=e.physical_fatigue,
         )
         for e in rows
     ]

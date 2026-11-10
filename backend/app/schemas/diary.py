@@ -13,6 +13,10 @@ class DiaryUpsertRequest(BaseModel):
     stress_level: int | None = Field(None, ge=1, le=10)
     caffeine_intake: int | None = Field(None, ge=0)
     water_ml: int | None = Field(None, ge=0)
+    physical_fatigue: StrictBool | None = Field(
+        None,
+        description="true — была физическая усталость, false — не было, null — не указано. Пропущенное поле сохраняет прежнее значение.",
+    )
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)
 
@@ -27,5 +31,6 @@ class DiaryResponse(BaseModel):
     stress_level: int | None = None
     caffeine_intake: int | None = None
     water_ml: int | None = None
+    physical_fatigue: bool | None = None
     latitude: float | None = None
     longitude: float | None = None
