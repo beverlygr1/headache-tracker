@@ -69,7 +69,7 @@ def test_diary_entry_without_answer_is_still_valid(session, user):
 
 
 def test_forecast_passes_answer_to_model_and_stores_it(client, session, user):
-    session.add(DiaryEntry(user_id=user.id, date=today_utc(), physical_fatigue=True))
+    session.add(DiaryEntry(user_id=user.id, date=today_utc(), physical_fatigue=True, sleep_hours=7, stress_level=4, caffeine_intake=0))
     session.commit()
 
     assert client.get(URL).status_code == 200
@@ -79,7 +79,7 @@ def test_forecast_passes_answer_to_model_and_stores_it(client, session, user):
 
 @pytest.mark.parametrize("answer", [False, None])
 def test_forecast_without_positive_answer_has_zero(client, session, user, answer):
-    session.add(DiaryEntry(user_id=user.id, date=today_utc(), physical_fatigue=answer))
+    session.add(DiaryEntry(user_id=user.id, date=today_utc(), physical_fatigue=answer, sleep_hours=7, stress_level=4, caffeine_intake=0))
     session.commit()
 
     assert client.get(URL).status_code == 200

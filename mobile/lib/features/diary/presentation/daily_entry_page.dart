@@ -39,6 +39,7 @@ class _DailyEntryPageState extends State<DailyEntryPage>
         'headache': _headachePresent,
         'quality': _sleepQuality,
         'stress': _stress,
+        'physical_fatigue': _physicalFatigue,
       };
   @override
   void applyDraft(Map<String, dynamic> values) {
@@ -48,6 +49,7 @@ class _DailyEntryPageState extends State<DailyEntryPage>
     _headachePresent = values['headache'] as bool?;
     _sleepQuality = values['quality'] as int?;
     _stress = values['stress'] as int?;
+    _physicalFatigue = values['physical_fatigue'] as bool?;
   }
 
   final _formKey = GlobalKey<FormState>();
@@ -55,6 +57,7 @@ class _DailyEntryPageState extends State<DailyEntryPage>
   final _water = TextEditingController();
   final _caffeine = TextEditingController();
   bool? _headachePresent;
+  bool? _physicalFatigue;
   int? _sleepQuality;
   int? _stress;
   bool _loading = true;
@@ -98,6 +101,7 @@ class _DailyEntryPageState extends State<DailyEntryPage>
       _headachePresent = entry?.headachePresent;
       _sleepQuality = entry?.sleepQuality;
       _stress = entry?.stressLevel;
+      _physicalFatigue = entry?.physicalFatigue;
     } catch (error) {
       if (mounted) _loadError = describeError(error);
     } finally {
@@ -119,7 +123,8 @@ class _DailyEntryPageState extends State<DailyEntryPage>
         _caffeine.text.trim().isEmpty &&
         _headachePresent == null &&
         _sleepQuality == null &&
-        _stress == null) {
+        _stress == null &&
+        _physicalFatigue == null) {
       setState(() => _saveError = 'Заполните хотя бы один пункт');
       return;
     }
@@ -139,6 +144,7 @@ class _DailyEntryPageState extends State<DailyEntryPage>
               waterMl: int.tryParse(_water.text.trim()),
               caffeineIntake: int.tryParse(_caffeine.text.trim()),
               stressLevel: _stress,
+              physicalFatigue: _physicalFatigue,
             ),
           ));
       if (mounted) Navigator.of(context).pop(entry);
@@ -298,6 +304,32 @@ class _DailyEntryPageState extends State<DailyEntryPage>
                           onChanged: (value) =>
                               draftChange(() => _stress = value),
                         ),
+                        const SizedBox(height: 16),
+                        AppCard(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              const _FieldTitle(
+                                  icon: Icons.directions_run_rounded,
+                                  title: 'Была ли физическая усталость?'),
+                              const SizedBox(height: 12),
+                              Wrap(spacing: 8, children: [
+                                for (final answer in [true, false])
+                                  ChoiceChip(
+                                    key: ValueKey(
+                                        answer ? 'fatigue-yes' : 'fatigue-no'),
+                                    label: Text(answer ? 'Да' : 'Нет'),
+                                    selected: _physicalFatigue == answer,
+                                    showCheckmark: false,
+                                    selectedColor: AppColors.blueSoft,
+                                    onSelected: _saving
+                                        ? null
+                                        : (selected) => draftChange(() =>
+                                            _physicalFatigue =
+                                                selected ? answer : null),
+                                  ),
+                              ]),
+                            ])),
                         const SizedBox(height: 16),
                         const AppCard(
                           color: AppColors.mint,

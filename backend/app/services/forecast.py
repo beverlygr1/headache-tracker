@@ -155,4 +155,3 @@ def get_forecast(
         probability=probability,
         weather=to_response(weather) if weather is not None else None,
     )
-

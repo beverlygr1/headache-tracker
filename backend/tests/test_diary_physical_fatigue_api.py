@@ -82,7 +82,7 @@ def test_list_contains_field(client, user):
 
 
 def test_answer_reaches_the_forecast(client, session, user):
-    put(client, {"physical_fatigue": True})
+    put(client, {"physical_fatigue": True, "sleep_hours": 7, "stress_level": 4, "caffeine_intake": 0})
 
     assert client.get("/api/v1/forecast/risk").status_code == 200
 
