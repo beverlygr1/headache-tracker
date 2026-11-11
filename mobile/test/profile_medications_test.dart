@@ -26,6 +26,7 @@ void main() {
         HeadacheTrackerApp(home: ProfileSettingsPage(controller: auth)));
     await tester.enterText(
         find.byKey(const ValueKey('profile-name')), '  Новое имя  ');
+    await tester.pump();
     await tester.tap(find.text('Сохранить имя'));
     await tester.pumpAndSettle();
     expect(find.text('Нет соединения с сервером'), findsOneWidget);

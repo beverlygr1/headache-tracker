@@ -62,10 +62,32 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     super.initState();
     final profile = widget.controller.profile;
     _name = TextEditingController(text: profile?.name ?? '');
+    _name.addListener(_refresh);
+    _current.addListener(_refresh);
+    _password.addListener(_refresh);
+    _confirm.addListener(_refresh);
     _birthDate = profile?.birthDate;
     _gender = _genders.containsKey(profile?.gender) ? profile?.gender : null;
     _timeZone = profile?.timeZone;
   }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _nameChanged =>
+      _name.text.trim() != (widget.controller.profile?.name ?? '');
+  bool get _personalChanged {
+    final profile = widget.controller.profile;
+    return _birthDate != profile?.birthDate ||
+        _gender != profile?.gender ||
+        _timeZone != profile?.timeZone;
+  }
+
+  bool get _passwordReady =>
+      _current.text.isNotEmpty &&
+      _password.text.isNotEmpty &&
+      _confirm.text.isNotEmpty;
 
   Future<void> _choosePhoto() async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -187,7 +209,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   }
 
   Future<void> _saveName() async {
-    if (_busy || !_nameKey.currentState!.validate()) return;
+    if (_busy || !_nameChanged || !_nameKey.currentState!.validate()) return;
     setState(() {
       _savingName = true;
       _nameError = null;
@@ -207,7 +229,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   }
 
   Future<void> _savePassword() async {
-    if (_busy || !_passwordKey.currentState!.validate()) return;
+    if (_busy || !_passwordReady || !_passwordKey.currentState!.validate()) {
+      return;
+    }
     setState(() {
       _savingPassword = true;
       _passwordError = null;
@@ -278,7 +302,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                   label: _savingName
                                       ? 'Сохранение…'
                                       : 'Сохранить имя',
-                                  onPressed: _busy ? null : _saveName),
+                                  onPressed: _busy || !_nameChanged
+                                      ? null
+                                      : _saveName),
                             ]))),
                 const SizedBox(height: 18),
                 _personalCard(),
@@ -357,7 +383,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                   label: _savingPassword
                                       ? 'Сохранение…'
                                       : 'Изменить пароль',
-                                  onPressed: _busy ? null : _savePassword),
+                                  onPressed: _busy || !_passwordReady
+                                      ? null
+                                      : _savePassword),
                             ]))),
               ],
             )),
@@ -367,16 +395,28 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     final profile = widget.controller.profile;
     final hasPhoto = profile?.hasAvatar ?? false;
     return AppCard(
+      padding: const EdgeInsets.all(16),
       child: Column(children: [
-        ProfileAvatar(
-          key: const ValueKey('settings-avatar'),
-          name: profile?.name,
-          photo: widget.controller.avatar,
-          size: 96,
-        ),
-        const SizedBox(height: 10),
-        Text(profile?.email ?? '',
-            style: const TextStyle(color: AppColors.muted)),
+        Row(children: [
+          ProfileAvatar(
+            key: const ValueKey('settings-avatar'),
+            name: profile?.name,
+            photo: widget.controller.avatar,
+            size: 64,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(profile?.name ?? '',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(profile?.email ?? '',
+                    style: const TextStyle(color: AppColors.muted),
+                    overflow: TextOverflow.ellipsis),
+              ])),
+        ]),
         const SizedBox(height: 14),
         if (_photoError != null)
           Padding(
@@ -392,6 +432,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                     ? 'Сменить фото'
                     : 'Добавить фото',
             icon: Icons.photo_camera_outlined,
+            backgroundColor: const Color(0xFFE9EEF8),
+            foregroundColor: AppColors.ink,
             onPressed: _busy ? null : _choosePhoto),
         if (hasPhoto) ...[
           const SizedBox(height: 10),
@@ -473,7 +515,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           const SizedBox(height: 6),
           PrimaryActionButton(
               label: _savingPersonal ? 'Сохранение…' : 'Сохранить данные',
-              onPressed: _busy ? null : _savePersonal),
+              onPressed: _busy || !_personalChanged ? null : _savePersonal),
         ]),
       );
 
