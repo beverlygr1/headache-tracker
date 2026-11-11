@@ -82,6 +82,12 @@ void main() {
     await tester.scrollUntilVisible(
         find.byKey(const ValueKey('sleep-quality-8')), 250,
         scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+      tester.element(find.byKey(const ValueKey('sleep-quality-8'))),
+      alignment: .3,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('sleep-quality-8')));
     await tester.scrollUntilVisible(
         find.byKey(const ValueKey('caffeine-field')), 250,
@@ -236,6 +242,42 @@ void main() {
             .controller!
             .text,
         '120');
+  });
+
+  testWidgets('sleep quality swipes to 10 and restores it when reopened',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repository = InMemoryDiaryRepository();
+    final date = DateTime(2026, 11, 11);
+    await tester.pumpWidget(_host(repository, date));
+    await _open(tester);
+
+    final strip = find.byKey(const ValueKey('sleep-quality-scroll'));
+    final lastScore = find.byKey(const ValueKey('sleep-quality-10'));
+    await tester.scrollUntilVisible(strip, 220,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(tester.element(strip), alignment: .25);
+    await tester.pumpAndSettle();
+    expect(lastScore.hitTestable(), findsNothing);
+    await tester.drag(strip, const Offset(-480, 0));
+    await tester.pumpAndSettle();
+    expect(lastScore.hitTestable(), findsOneWidget);
+    await tester.tap(lastScore);
+    await tester.tap(find.text('Сохранить самочувствие'));
+    await tester.pumpAndSettle();
+    expect((await repository.fetchByDate(date))?.sleepQuality, 10);
+
+    await _open(tester);
+    await tester.scrollUntilVisible(strip, 220,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(lastScore).selected, isTrue);
+    expect(lastScore.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('expanded daily form scrolls on a narrow screen', (tester) async {
