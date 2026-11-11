@@ -292,12 +292,12 @@ class BackTitleBar extends StatelessWidget implements PreferredSizeWidget {
   final String? subtitle;
 
   @override
-  Size get preferredSize => const Size.fromHeight(66);
+  Size get preferredSize => const Size.fromHeight(78);
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      toolbarHeight: 66,
+      toolbarHeight: 78,
       leadingWidth: 68,
       leading: Padding(
         padding: const EdgeInsets.only(left: 16),
