@@ -103,7 +103,7 @@ class _ReminderSettingsPageState extends State<ReminderSettingsPage> {
                 const SizedBox(height: 14),
                 if (!supported)
                   const _Note(
-                    'Напоминания работают в Android-приложении. '
+                    'Напоминания работают в приложении для Android и iOS. '
                     'В браузере уведомления не планируются.',
                   )
                 else if (_permissionDenied) ...[
