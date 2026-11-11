@@ -201,12 +201,10 @@ class _DailyEntryPageState extends State<DailyEntryPage>
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
-                                  ChoiceChip(
+                                  _diaryChoiceChip(
                                     key: const ValueKey('headache-yes'),
                                     label: const Text('Да, была'),
                                     selected: _headachePresent == true,
-                                    showCheckmark: false,
-                                    selectedColor: AppColors.blueSoft,
                                     onSelected: _saving
                                         ? null
                                         : (selected) => draftChange(
@@ -214,12 +212,10 @@ class _DailyEntryPageState extends State<DailyEntryPage>
                                                   selected ? true : null,
                                             ),
                                   ),
-                                  ChoiceChip(
+                                  _diaryChoiceChip(
                                     key: const ValueKey('headache-no'),
                                     label: const Text('Нет, не было'),
                                     selected: _headachePresent == false,
-                                    showCheckmark: false,
-                                    selectedColor: AppColors.mint,
                                     onSelected: _saving
                                         ? null
                                         : (selected) => draftChange(
@@ -285,6 +281,7 @@ class _DailyEntryPageState extends State<DailyEntryPage>
                           value: _sleepQuality,
                           enabled: !_saving,
                           keyPrefix: 'sleep-quality',
+                          horizontal: true,
                           onChanged: (value) =>
                               draftChange(() => _sleepQuality = value),
                         ),
@@ -408,6 +405,7 @@ class _RatingCard extends StatelessWidget {
     required this.enabled,
     required this.keyPrefix,
     required this.onChanged,
+    this.horizontal = false,
   });
 
   final String title;
@@ -417,6 +415,17 @@ class _RatingCard extends StatelessWidget {
   final bool enabled;
   final String keyPrefix;
   final ValueChanged<int?> onChanged;
+  final bool horizontal;
+
+  Widget _choice(int level) => _diaryChoiceChip(
+        key: ValueKey('$keyPrefix-$level'),
+        label: Text('$level'),
+        compact: true,
+        selected: value == level,
+        onSelected:
+            enabled ? (selected) => onChanged(selected ? level : null) : null,
+        tooltip: '$title: $level из 10',
+      );
 
   @override
   Widget build(BuildContext context) => AppCard(
@@ -430,28 +439,159 @@ class _RatingCard extends StatelessWidget {
               style: const TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (var level = 1; level <= 10; level++)
-                  ChoiceChip(
-                    key: ValueKey('$keyPrefix-$level'),
-                    label: Text('$level'),
-                    selected: value == level,
-                    showCheckmark: false,
-                    selectedColor: AppColors.blueSoft,
-                    onSelected: enabled
-                        ? (selected) => onChanged(selected ? level : null)
-                        : null,
-                    tooltip: '$title: $level из 10',
-                  ),
-              ],
-            ),
+            if (horizontal)
+              _HorizontalRatingStrip(
+                value: value,
+                keyPrefix: keyPrefix,
+                children: [
+                  for (var level = 1; level <= 10; level++) ...[
+                    if (level > 1) const SizedBox(width: 8),
+                    SizedBox(width: 48, child: _choice(level)),
+                  ],
+                ],
+              )
+            else
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns =
+                      ((constraints.maxWidth + 8) / 56).floor().clamp(1, 5);
+                  final width =
+                      (constraints.maxWidth - (columns - 1) * 8) / columns;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var level = 1; level <= 10; level++)
+                        SizedBox(
+                          width: width,
+                          child: _choice(level),
+                        ),
+                    ],
+                  );
+                },
+              ),
           ],
         ),
       );
 }
+
+class _HorizontalRatingStrip extends StatefulWidget {
+  const _HorizontalRatingStrip({
+    required this.value,
+    required this.keyPrefix,
+    required this.children,
+  });
+
+  final int? value;
+  final String keyPrefix;
+  final List<Widget> children;
+
+  @override
+  State<_HorizontalRatingStrip> createState() => _HorizontalRatingStripState();
+}
+
+class _HorizontalRatingStripState extends State<_HorizontalRatingStrip> {
+  final _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _revealSelection();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HorizontalRatingStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) _revealSelection();
+  }
+
+  void _revealSelection() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controller.hasClients || widget.value == null) return;
+      final position = _controller.position;
+      final start = (widget.value! - 1) * 56.0;
+      final end = start + 48;
+      final offset = start < position.pixels
+          ? start
+          : end > position.pixels + position.viewportDimension
+              ? end - position.viewportDimension
+              : position.pixels;
+      final target = offset.clamp(0.0, position.maxScrollExtent);
+      if (target != position.pixels) _controller.jumpTo(target);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: ScrollbarTheme(
+          data: ScrollbarThemeData(
+            thumbColor:
+                WidgetStatePropertyAll(AppColors.muted.withValues(alpha: .4)),
+          ),
+          child: Scrollbar(
+            controller: _controller,
+            thumbVisibility: true,
+            thickness: 3,
+            radius: const Radius.circular(3),
+            child: SingleChildScrollView(
+              key: ValueKey('${widget.keyPrefix}-scroll'),
+              controller: _controller,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(children: widget.children),
+            ),
+          ),
+        ),
+      );
+}
+
+ChoiceChip _diaryChoiceChip({
+  required Key key,
+  required Widget label,
+  required bool selected,
+  required ValueChanged<bool>? onSelected,
+  bool compact = false,
+  String? tooltip,
+}) =>
+    ChoiceChip(
+      key: key,
+      label: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
+        child: Center(widthFactor: compact ? null : 1, child: label),
+      ),
+      selected: selected,
+      onSelected: onSelected,
+      tooltip: tooltip,
+      showCheckmark: false,
+      backgroundColor: AppColors.background,
+      selectedColor: AppColors.bluePale,
+      disabledColor: AppColors.background,
+      side: WidgetStateBorderSide.resolveWith((states) => BorderSide(
+            color: !states.contains(WidgetState.disabled) &&
+                    (selected || states.contains(WidgetState.focused))
+                ? AppColors.blue
+                : AppColors.line,
+            width: states.contains(WidgetState.focused) ? 2 : 1,
+          )),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      labelPadding: EdgeInsets.symmetric(horizontal: compact ? 0 : 12),
+      labelStyle: TextStyle(
+        fontFamily: 'Onest',
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: onSelected == null ? AppColors.muted : AppColors.ink,
+      ),
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      visualDensity: VisualDensity.standard,
+    );
 
 class WaterTrackerCard extends StatelessWidget {
   const WaterTrackerCard(
@@ -462,7 +602,6 @@ class WaterTrackerCard extends StatelessWidget {
   Widget build(BuildContext context) => _QuantityTrackerCard(
       title: 'Сколько воды выпили?',
       label: 'Количество воды',
-      hint: 'Для быстрого ввода: один стакан — 250 мл.',
       prefix: 'water',
       icon: Icons.water_drop_outlined,
       unit: 'мл',
@@ -481,8 +620,6 @@ class CaffeineTrackerCard extends StatelessWidget {
   Widget build(BuildContext context) => _QuantityTrackerCard(
       title: 'Сколько кофеина употребили?',
       label: 'Количество кофеина',
-      hint:
-          'Быстрый ввод: условная чашка — 100 мг. Точное количество можно указать вручную.',
       prefix: 'caffeine',
       icon: Icons.coffee_outlined,
       unit: 'мг',
@@ -496,7 +633,6 @@ class _QuantityTrackerCard extends StatelessWidget {
   const _QuantityTrackerCard(
       {required this.title,
       required this.label,
-      required this.hint,
       required this.prefix,
       required this.icon,
       required this.unit,
@@ -504,7 +640,7 @@ class _QuantityTrackerCard extends StatelessWidget {
       required this.presets,
       required this.controller,
       required this.enabled});
-  final String title, label, hint, prefix, unit;
+  final String title, label, prefix, unit;
   final IconData icon;
   final int step;
   final List<int> presets;
@@ -526,24 +662,73 @@ class _QuantityTrackerCard extends StatelessWidget {
         final current = int.tryParse(text.text.trim());
         final valid = text.text.trim().isEmpty ||
             current != null && current >= 0 && current <= _max;
+        final stepButtonStyle = IconButton.styleFrom(
+          fixedSize: const Size.square(48),
+          foregroundColor: AppColors.ink,
+          backgroundColor: AppColors.bluePale,
+          disabledForegroundColor: AppColors.muted.withValues(alpha: .5),
+          disabledBackgroundColor: AppColors.background,
+          side: const BorderSide(color: AppColors.line),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        );
         return AppCard(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _FieldTitle(icon: icon, title: title),
-          const SizedBox(height: 10),
-          Text(hint,
-              style: const TextStyle(color: AppColors.muted, fontSize: 11)),
           const SizedBox(height: 14),
           TextFormField(
             key: ValueKey('$prefix-field'),
             controller: controller,
             enabled: enabled,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) =>
                 FocusManager.instance.primaryFocus?.unfocus(),
             decoration: InputDecoration(
-                labelText: label, suffixText: unit, hintText: 'Не указано'),
+              labelText: label,
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+              hintText: 'Не указано',
+              hintStyle: const TextStyle(fontSize: 13, color: AppColors.muted),
+              floatingLabelStyle:
+                  const TextStyle(color: AppColors.muted, fontSize: 13),
+              contentPadding: const EdgeInsets.symmetric(vertical: 18),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.all(6),
+                child: IconButton(
+                  key: ValueKey('$prefix-decrease'),
+                  tooltip: 'Уменьшить на $step $unit',
+                  style: stepButtonStyle,
+                  onPressed: enabled && valid && (current ?? 0) > 0
+                      ? () => _set(((current ?? 0) - step).clamp(0, _max))
+                      : null,
+                  icon: const Icon(Icons.remove_rounded),
+                ),
+              ),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(unit,
+                      style: const TextStyle(
+                          color: AppColors.muted, fontSize: 13)),
+                  Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: IconButton(
+                      key: ValueKey('$prefix-increase'),
+                      tooltip: 'Добавить $step $unit',
+                      style: stepButtonStyle,
+                      onPressed:
+                          enabled && valid && (current ?? 0) <= _max - step
+                              ? () => _set((current ?? 0) + step)
+                              : null,
+                      icon: const Icon(Icons.add_rounded),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             validator: (text) {
               if (text == null || text.trim().isEmpty) return null;
               final number = int.tryParse(text.trim());
@@ -552,51 +737,39 @@ class _QuantityTrackerCard extends StatelessWidget {
                   : null;
             },
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Wrap(
               spacing: 8,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                IconButton.filledTonal(
-                    key: ValueKey('$prefix-decrease'),
-                    tooltip: 'Уменьшить на $step $unit',
-                    onPressed: enabled && valid && (current ?? 0) > 0
-                        ? () => _set(((current ?? 0) - step).clamp(0, _max))
-                        : null,
-                    icon: const Icon(Icons.remove_rounded)),
-                Text('$step $unit',
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600)),
-                IconButton.filledTonal(
-                    key: ValueKey('$prefix-increase'),
-                    tooltip: 'Добавить $step $unit',
-                    onPressed: enabled && valid && (current ?? 0) <= _max - step
-                        ? () => _set((current ?? 0) + step)
-                        : null,
-                    icon: const Icon(Icons.add_rounded)),
+                for (final preset in presets)
+                  _diaryChoiceChip(
+                      key: ValueKey('$prefix-preset-$preset'),
+                      label: Text('$preset $unit'),
+                      selected: current == preset,
+                      onSelected: enabled ? (_) => _set(preset) : null),
                 TextButton(
-                    key: ValueKey('clear-$prefix'),
-                    onPressed: enabled && text.text.isNotEmpty
-                        ? controller.clear
-                        : null,
-                    child: const Text('Очистить')),
+                  key: ValueKey('clear-$prefix'),
+                  onPressed:
+                      enabled && text.text.isNotEmpty ? controller.clear : null,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    foregroundColor: AppColors.ink,
+                    disabledForegroundColor:
+                        AppColors.muted.withValues(alpha: .5),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    textStyle: const TextStyle(
+                        fontFamily: 'Onest',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    side: const BorderSide(color: AppColors.line),
+                  ),
+                  child: const Text('Очистить'),
+                ),
               ]),
-          const SizedBox(height: 6),
-          Wrap(spacing: 8, runSpacing: 6, children: [
-            for (final preset in presets)
-              ChoiceChip(
-                  key: ValueKey('$prefix-preset-$preset'),
-                  label: Text('$preset $unit'),
-                  selected: current == preset,
-                  onSelected: enabled ? (_) => _set(preset) : null,
-                  selectedColor: AppColors.blueSoft,
-                  showCheckmark: false,
-                  labelStyle:
-                      const TextStyle(fontFamily: 'Onest', fontSize: 11),
-                  side: BorderSide.none,
-                  backgroundColor: AppColors.background),
-          ]),
         ]));
       });
 }
