@@ -27,6 +27,18 @@ void main() {
     });
   });
 
+  test('reminders are scheduled on Android and iOS, not in the browser', () {
+    bool supports(bool web, TargetPlatform platform) =>
+        LocalNotificationReminderScheduler.supportsPlatform(
+          isWeb: web,
+          platform: platform,
+        );
+    expect(supports(false, TargetPlatform.android), isTrue);
+    expect(supports(false, TargetPlatform.iOS), isTrue);
+    expect(supports(true, TargetPlatform.iOS), isFalse);
+    expect(supports(false, TargetPlatform.windows), isFalse);
+  });
+
   test('settings survive encode/decode and reject garbage', () {
     const settings = ReminderSettings(enabled: true, hour: 8, minute: 5);
     expect(settings.encode(), 'on|08:05');

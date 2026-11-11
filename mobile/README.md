@@ -195,6 +195,79 @@ Release-сборка пока подписана debug-ключом: подхо�
 по HTTP (`usesCleartextTraffic` в `AndroidManifest.xml`) — убрать после
 перехода backend на HTTPS.
 
+## iOS
+
+Платформа iOS добавлена (`ios/`, bundle ID `ru.gpo2508.headacheTrackerApp`,
+на устройстве — «Дневник боли»). Собирается **только на Mac** с Xcode.
+
+### Подготовка Mac (один раз)
+
+1. Установите **Xcode** из App Store, откройте его один раз и примите лицензию.
+   Затем в терминале:
+
+   ```bash
+   sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+   sudo xcodebuild -runFirstLaunch
+   ```
+
+2. Xcode → **Settings → Components** (или Platforms): скачайте **iOS Simulator**.
+3. Homebrew, Flutter и CocoaPods:
+
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   brew install --cask flutter
+   brew install cocoapods
+   flutter upgrade  # iOS-шаблон проекта создан свежим Flutter (stable)
+   flutter doctor   # строки Flutter и Xcode должны быть [√]
+   ```
+
+### Запуск в симуляторе
+
+```bash
+cd mobile
+flutter pub get
+open -a Simulator          # или Xcode → Open Developer Tool → Simulator
+flutter run                # при нескольких устройствах: flutter devices, flutter run -d <id>
+```
+
+Первая сборка ставит зависимости CocoaPods (`ios/Podfile` создаётся сам)
+и идёт 5–10 минут. Backend, запущенный на этом же Mac
+(`docker compose up --build`), симулятор видит как `localhost` — адрес
+по умолчанию подходит, ничего вводить не нужно.
+
+### Запуск на своём iPhone
+
+1. Подключите iPhone кабелем, на телефоне нажмите «Доверять этому компьютеру».
+2. Откройте `mobile/ios/Runner.xcworkspace` (не `.xcodeproj`) в Xcode →
+   **Runner → Signing & Capabilities → Team**: выберите свой Apple ID
+   (Xcode → Settings → Accounts → «+»). Подойдёт бесплатный аккаунт.
+   Если Xcode пишет, что bundle ID занят, замените его на уникальный,
+   например `ru.gpo2508.headacheTracker.<ваше-имя>`.
+3. На iPhone включите **Настройки → Конфиденциальность и безопасность →
+   Режим разработчика** (iOS 16+), телефон перезагрузится.
+4. `flutter run --release` (или ▶ в Xcode).
+5. При первом запуске: **Настройки → Основные → VPN и управление
+   устройством** → ваш Apple ID → «Доверять».
+
+На телефоне backend на Mac доступен по IP Mac (`ipconfig getifaddr en0`):
+на экране входа нажмите «Сервер: …» и введите IP. iOS спросит разрешение
+на доступ к локальной сети — нажмите «Разрешить», иначе запросы к серверу
+не пройдут.
+
+С бесплатным Apple ID приложение работает **7 дней**, затем его нужно
+снова запустить с Mac. Раздать iOS-версию файлом, как APK, нельзя:
+для TestFlight и установки на чужие iPhone нужен платный Apple Developer
+Program (99 $ в год).
+
+### Что настроено для iOS
+
+- `Info.plist`: подписи разрешений камеры и фото (фото профиля),
+  локальной сети (backend на ноутбуке) и разрешение HTTP — backend
+  пока без HTTPS. Убрать `NSAllowsArbitraryLoads`, когда backend перейдёт
+  на HTTPS.
+- Напоминание о дневнике работает и на iOS: при включении система
+  спрашивает разрешение на уведомления.
+
 ## Адрес backend
 
 Сначала запустите backend (см. `backend/README.md` или `docker compose up`

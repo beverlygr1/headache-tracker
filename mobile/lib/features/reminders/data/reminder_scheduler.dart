@@ -57,9 +57,23 @@ class LocalNotificationReminderScheduler implements ReminderScheduler {
       _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
 
+  IOSFlutterLocalNotificationsPlugin? get _ios =>
+      _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+
   @override
-  bool get isSupported =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  bool get isSupported => supportsPlatform(
+        isWeb: kIsWeb,
+        platform: defaultTargetPlatform,
+      );
+
+  @visibleForTesting
+  static bool supportsPlatform({
+    required bool isWeb,
+    required TargetPlatform platform,
+  }) =>
+      !isWeb &&
+      (platform == TargetPlatform.android || platform == TargetPlatform.iOS);
 
   @override
   Future<void> init({required VoidCallback onOpen}) async {
@@ -75,6 +89,12 @@ class LocalNotificationReminderScheduler implements ReminderScheduler {
     await _plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        // Разрешение спрашиваем при включении напоминания, а не при запуске.
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
       ),
       onDidReceiveNotificationResponse: (response) {
         if (response.payload == _payload) onOpen();
@@ -92,9 +112,13 @@ class LocalNotificationReminderScheduler implements ReminderScheduler {
   @override
   Future<bool> requestPermission() async {
     final android = _android;
-    if (android == null) return false;
-    if (await android.areNotificationsEnabled() == true) return true;
-    return await android.requestNotificationsPermission() ?? false;
+    if (android != null) {
+      if (await android.areNotificationsEnabled() == true) return true;
+      return await android.requestNotificationsPermission() ?? false;
+    }
+    // iOS спрашивает один раз; после отказа возвращает false, и экран
+    // предлагает открыть настройки уведомлений.
+    return await _ios?.requestPermissions(alert: true, sound: true) ?? false;
   }
 
   @override
@@ -104,7 +128,10 @@ class LocalNotificationReminderScheduler implements ReminderScheduler {
     await _plugin.zonedSchedule(
       id: _notificationId,
       scheduledDate: tz.TZDateTime.from(next, tz.local),
-      notificationDetails: const NotificationDetails(android: _channel),
+      notificationDetails: const NotificationDetails(
+        android: _channel,
+        iOS: DarwinNotificationDetails(),
+      ),
       // Неточный будильник не требует разрешения на точные будильники;
       // для напоминания о дневнике погрешность в несколько минут не важна.
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
