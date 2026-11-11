@@ -48,6 +48,7 @@ def _local_date(moment: datetime, tz) -> date:
     return ensure_utc(moment).astimezone(tz).date()
 
 
+
 def _coordinates(
     latitude: float | None,
     longitude: float | None,
@@ -109,6 +110,7 @@ def get_forecast(
             sleep_hours=e.sleep_hours,
             stress_level=e.stress_level,
             caffeine_intake=e.caffeine_intake,
+            physical_fatigue=e.physical_fatigue,
         )
         for e in diary_repo.list_entries(db, user.id, None, today)
     ]
@@ -153,3 +155,4 @@ def get_forecast(
         probability=probability,
         weather=to_response(weather) if weather is not None else None,
     )
+

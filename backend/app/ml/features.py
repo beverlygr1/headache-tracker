@@ -16,6 +16,7 @@ class DiaryValues:
     sleep_hours: float | None = None
     stress_level: int | None = None
     caffeine_intake: int | None = None
+    physical_fatigue: bool | None = None
 
 
 def build_features(
@@ -45,6 +46,8 @@ def build_features(
             features["excessive_caffeine"] = int(
                 today_entry.caffeine_intake > CAFFEINE_EXCESS_MG
             )
+        if today_entry.physical_fatigue is not None:
+            features["physical_fatigue"] = int(today_entry.physical_fatigue)
 
     if weather_change_level is not None:
         features["weather_change"] = int(
