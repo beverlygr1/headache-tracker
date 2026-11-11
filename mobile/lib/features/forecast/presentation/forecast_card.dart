@@ -176,7 +176,8 @@ class ForecastCard extends StatelessWidget {
                 const Text('Данные записи пока не загружены.')
               else
                 AppCard(
-                  color: AppColors.bluePale,
+                  color: AppColors.card,
+                  border: const BorderSide(color: AppColors.line),
                   child: Column(
                     children: [
                       _detailRow(
@@ -184,10 +185,10 @@ class ForecastCard extends StatelessWidget {
                           sleep == null
                               ? '—'
                               : '${DailyEntry.formatHours(sleep)} ч'),
-                      const Divider(height: 20),
+                      const Divider(height: 24, color: AppColors.line),
                       _detailRow(
                           'Стресс', stress == null ? '—' : '$stress из 10'),
-                      const Divider(height: 20),
+                      const Divider(height: 24, color: AppColors.line),
                       _detailRow(
                           'Кофеин', caffeine == null ? '—' : '$caffeine мг'),
                     ],
