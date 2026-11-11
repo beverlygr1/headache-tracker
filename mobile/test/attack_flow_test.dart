@@ -370,12 +370,14 @@ void main() {
     ));
     await tester.tap(find.text('Начать'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Приступ закончился'), 250);
+    // Шапка стала выше: кнопку нужно прокрутить целиком, а не до края экрана.
+    await _reveal(tester, find.text('Приступ закончился'));
     await tester.tap(find.text('Приступ закончился'));
     await tester.pumpAndSettle();
     expect(find.text('Нет соединения с сервером'), findsOneWidget);
     expect(controller.byId(original.id)?.isActive, isTrue);
 
+    await _reveal(tester, find.text('Приступ закончился'));
     await tester.tap(find.text('Приступ закончился'));
     await tester.pumpAndSettle();
     expect(controller.byId(original.id)?.isActive, isFalse);

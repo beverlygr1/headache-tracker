@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -14,7 +14,7 @@ URL = "/api/v1/forecast/risk"
 
 
 def today_utc():
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 @pytest.fixture

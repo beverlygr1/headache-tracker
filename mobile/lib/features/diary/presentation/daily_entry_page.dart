@@ -310,15 +310,13 @@ class _DailyEntryPageState extends State<DailyEntryPage>
                                   icon: Icons.directions_run_rounded,
                                   title: 'Была ли физическая усталость?'),
                               const SizedBox(height: 12),
-                              Wrap(spacing: 8, children: [
+                              Wrap(spacing: 8, runSpacing: 8, children: [
                                 for (final answer in [true, false])
-                                  ChoiceChip(
+                                  _diaryChoiceChip(
                                     key: ValueKey(
                                         answer ? 'fatigue-yes' : 'fatigue-no'),
                                     label: Text(answer ? 'Да' : 'Нет'),
                                     selected: _physicalFatigue == answer,
-                                    showCheckmark: false,
-                                    selectedColor: AppColors.blueSoft,
                                     onSelected: _saving
                                         ? null
                                         : (selected) => draftChange(() =>

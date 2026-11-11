@@ -48,7 +48,6 @@ def _local_date(moment: datetime, tz) -> date:
     return ensure_utc(moment).astimezone(tz).date()
 
 
-
 def _coordinates(
     latitude: float | None,
     longitude: float | None,

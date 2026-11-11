@@ -18,15 +18,13 @@ void main() {
     await tester.pumpWidget(_host(repository, date));
     await _open(tester);
     final yes = find.byKey(const ValueKey('fatigue-yes'));
-    await tester.scrollUntilVisible(yes, 300,
-        scrollable: find.byType(Scrollable).first);
+    await _reveal(tester, yes);
     await tester.tap(yes);
     await tester.tap(find.text('Сохранить самочувствие'));
     await tester.pumpAndSettle();
     expect((await repository.fetchByDate(date))?.physicalFatigue, isTrue);
     await _open(tester);
-    await tester.scrollUntilVisible(yes, 300,
-        scrollable: find.byType(Scrollable).first);
+    await _reveal(tester, yes);
     expect(tester.widget<ChoiceChip>(yes).selected, isTrue);
     await tester.tap(yes);
     await tester.tap(find.text('Сохранить самочувствие'));
@@ -333,6 +331,16 @@ Widget _host(DiaryRepository repository, DateTime date) => HeadacheTrackerApp(
 
 Future<void> _open(WidgetTester tester) async {
   await tester.tap(find.text('Открыть дневник'));
+  await tester.pumpAndSettle();
+}
+
+/// Прокручивает элемент в середину экрана: у края его закрывает нижняя
+/// кнопка сохранения.
+Future<void> _reveal(WidgetTester tester, Finder target) async {
+  await tester.scrollUntilVisible(target, 300,
+      scrollable: find.byType(Scrollable).first);
+  await tester.pumpAndSettle();
+  await Scrollable.ensureVisible(tester.element(target), alignment: .5);
   await tester.pumpAndSettle();
 }
 
