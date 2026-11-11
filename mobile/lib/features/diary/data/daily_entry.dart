@@ -7,6 +7,7 @@ class DailyEntry {
     this.waterMl,
     this.caffeineIntake,
     this.stressLevel,
+    this.physicalFatigue,
     this.pendingSync = false,
   });
 
@@ -19,6 +20,7 @@ class DailyEntry {
         waterMl: json['water_ml'] as int?,
         caffeineIntake: json['caffeine_intake'] as int?,
         stressLevel: json['stress_level'] as int?,
+        physicalFatigue: json['physical_fatigue'] as bool?,
       );
 
   final bool pendingSync;
@@ -29,6 +31,7 @@ class DailyEntry {
   final int? waterMl;
   final int? caffeineIntake;
   final int? stressLevel;
+  final bool? physicalFatigue;
 
   Map<String, dynamic> toJson() => {
         'date':
@@ -39,6 +42,7 @@ class DailyEntry {
         'water_ml': waterMl,
         'caffeine_intake': caffeineIntake,
         'stress_level': stressLevel,
+        'physical_fatigue': physicalFatigue,
         'pending_sync': pendingSync,
       };
 
@@ -50,6 +54,10 @@ class DailyEntry {
       if (caffeineIntake != null) 'Кофеин $caffeineIntake мг',
       if (waterMl != null) 'Вода $waterMl мл',
       if (stressLevel != null) 'Стресс $stressLevel/10',
+      if (physicalFatigue != null)
+        physicalFatigue!
+            ? 'Была физическая усталость'
+            : 'Без физической усталости',
     ];
     return parts.isEmpty ? 'Запись самочувствия' : parts.join(' · ');
   }

@@ -11,6 +11,28 @@ import 'package:headache_tracker_app/features/tracker/presentation/pages/diary_p
 import 'package:headache_tracker_app/features/tracker/state/tracker_controller.dart';
 
 void main() {
+  testWidgets('fatigue answer saves, reopens and can be cleared',
+      (tester) async {
+    final repository = InMemoryDiaryRepository();
+    final date = DateTime(2026, 10, 7);
+    await tester.pumpWidget(_host(repository, date));
+    await _open(tester);
+    final yes = find.byKey(const ValueKey('fatigue-yes'));
+    await tester.scrollUntilVisible(yes, 300,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(yes);
+    await tester.tap(find.text('Сохранить самочувствие'));
+    await tester.pumpAndSettle();
+    expect((await repository.fetchByDate(date))?.physicalFatigue, isTrue);
+    await _open(tester);
+    await tester.scrollUntilVisible(yes, 300,
+        scrollable: find.byType(Scrollable).first);
+    expect(tester.widget<ChoiceChip>(yes).selected, isTrue);
+    await tester.tap(yes);
+    await tester.tap(find.text('Сохранить самочувствие'));
+    await tester.pumpAndSettle();
+    expect((await repository.fetchByDate(date))?.physicalFatigue, isNull);
+  });
   testWidgets('empty and invalid values cannot be saved as observations',
       (tester) async {
     final repository = InMemoryDiaryRepository();

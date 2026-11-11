@@ -46,6 +46,7 @@ void main() {
       headachePresent: false,
       sleepQuality: 8,
       caffeineIntake: 120,
+      physicalFatigue: false,
     ));
 
     expect(sent.method, 'PUT');
@@ -57,10 +58,12 @@ void main() {
       'stress_level': null,
       'caffeine_intake': 120,
       'water_ml': null,
+      'physical_fatigue': false,
     });
     expect(saved.headachePresent, isFalse);
     expect(saved.sleepQuality, 8);
     expect(saved.caffeineIntake, 120);
+    expect(saved.physicalFatigue, isFalse);
   });
 }
 

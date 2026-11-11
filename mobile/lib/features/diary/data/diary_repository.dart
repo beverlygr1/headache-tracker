@@ -57,6 +57,7 @@ class ApiDiaryRepository implements DiaryRepository {
           stressLevel: entry.stressLevel,
           caffeineIntake: entry.caffeineIntake,
           waterMl: entry.waterMl,
+          physicalFatigue: entry.physicalFatigue,
           replaceDailyFields: true),
     );
   }

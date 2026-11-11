@@ -15,6 +15,7 @@ class DiaryApi {
     int? stressLevel,
     int? caffeineIntake,
     int? waterMl,
+    bool? physicalFatigue,
     double? latitude,
     double? longitude,
     bool replaceDailyFields = false,
@@ -32,6 +33,8 @@ class DiaryApi {
         if (caffeineIntake != null || replaceDailyFields)
           'caffeine_intake': caffeineIntake,
         if (waterMl != null || replaceDailyFields) 'water_ml': waterMl,
+        if (physicalFatigue != null || replaceDailyFields)
+          'physical_fatigue': physicalFatigue,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
       },
